@@ -15,6 +15,7 @@
 
 #define BUFSIZE 128   // byte
 
+
 void die(char *message) {
   perror(message);
   exit(1);
