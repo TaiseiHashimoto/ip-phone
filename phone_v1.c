@@ -13,8 +13,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 
-#define BUFSIZE 128   // byte
-
+#define BUFSIZE 256   // byte
 
 void die(char *message) {
   perror(message);
@@ -40,6 +39,14 @@ void create_process(char *cmd, char **args, pid_t *pid, int *pfd) {
   }
 
   *pfd = pipefd[0]; // 親プロセスは読み込み用パイプを受け取る
+}
+
+void start_rec(fd_set *rfds, int *max_fd, pid_t *pid, int *pfd) {
+  char *args[] = {"rec", "-traw",  "-b16",  "-c1",  "-es",  "-r8000", "-q", "-", "--buffer", "256", NULL};
+  create_process("rec", args, pid, pfd);
+
+  FD_SET(*pfd, rfds);
+  if (*max_fd < *pfd) *max_fd = *pfd;
 }
 
 int main(int argc, char **argv){
@@ -70,9 +77,8 @@ int main(int argc, char **argv){
     die("bind");
   }
 
-  char *cmd = "rec", *args[] = {"rec", "-traw",  "-b16",  "-c1",  "-es",  "-r8000", "-q", "-", "--buffer", "256", NULL};
-  pid_t pid;
-  int pfd = -1;
+  pid_t rec_pid;
+  int rec_pfd = -1;
   
   short sbuf[BUFSIZE/2];
   char cbuf[BUFSIZE/2];
@@ -98,9 +104,7 @@ int main(int argc, char **argv){
       if (m == -1) die("recv");
       write(1, sbuf, m);
       if (!recieved) {
-        create_process(cmd, args, &pid, &pfd);  // start rec
-        FD_SET(pfd, &rfds_cp);
-        if (max_fd < pfd) max_fd = pfd;
+        start_rec(&rfds_cp, &max_fd, &rec_pid, &rec_pfd);
         recieved = 1;
       }
     }
@@ -109,7 +113,7 @@ int main(int argc, char **argv){
       fgets(cbuf, BUFSIZE, stdin);
       
       if (strcmp(cbuf, "quit\n") == 0) {
-        if (kill(pid, SIGKILL) == -1) die("kill");
+        if (kill(rec_pid, SIGKILL) == -1) die("kill");
         wait(NULL);
         break;
       }
@@ -128,14 +132,12 @@ int main(int argc, char **argv){
         ot_addr_len = sizeof(ot_addr);
 
         recieved = 1;
-        create_process(cmd, args, &pid, &pfd);  // start rec
-        FD_SET(pfd, &rfds_cp);
-        if (max_fd < pfd) max_fd = pfd;
+        start_rec(&rfds_cp, &max_fd, &rec_pid, &rec_pfd);
       }
     }
 
-    if (FD_ISSET(pfd, &rfds)) {     // pipe (rec command) readable */
-      int n = read(pfd, sbuf, BUFSIZE);
+    if (FD_ISSET(rec_pfd, &rfds_cp)) {     // pipe (rec command) readable */
+      int n = read(rec_pfd, sbuf, BUFSIZE);
       int m_send = sendto(s, sbuf, n, 0, (struct sockaddr *)&ot_addr, ot_addr_len);
       if (m_send == -1) die("send");
 
