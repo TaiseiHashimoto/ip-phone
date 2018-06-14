@@ -53,7 +53,9 @@ int main(int argc, char **argv){
   if (argc != 2) die("option");
 
   struct timeval st, en;
-  gettimeofday(&st, NULL);
+  // gettimeofday(&st, NULL);
+  //gettimeofday(&en, NULL);
+  //fprintf(stderr, "%.2f\n", (en.tv_sec-st.tv_sec)+(en.tv_usec-st.tv_usec)*1E-6);
 
   int s = socket(PF_INET, SOCK_DGRAM, 0);
   
@@ -66,11 +68,6 @@ int main(int argc, char **argv){
   struct sockaddr_in ot_addr;
   socklen_t ot_addr_len;
   ot_addr.sin_family = AF_INET;
-
-  
-  // already in useを回避
-  //const int one = 1;
-  //setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
   /* 待ち受け番号設定 */
   if (bind(s, (struct sockaddr *)&my_addr, my_addr_len) != 0) {
@@ -88,12 +85,9 @@ int main(int argc, char **argv){
   FD_SET(s, &rfds_cp);
   FD_SET(0, &rfds_cp);
   
-  int recieved = 0;   // have already recieved ? (flag)
-  int max_fd = s;
+  int recording = 0;   // flag to tell if recording already started
+  int max_fd = s;     // max file descriptor (used by select())
 
-  //gettimeofday(&en, NULL);
-  //fprintf(stderr, "%.2f\n", (en.tv_sec-st.tv_sec)+(en.tv_usec-st.tv_usec)*1E-6);
-  
   while(1) {
     memcpy(&rfds, &rfds_cp, sizeof(fd_set));
     select(max_fd + 1, &rfds, NULL, NULL, NULL);
@@ -103,18 +97,26 @@ int main(int argc, char **argv){
       int m = recvfrom(s, sbuf, BUFSIZE, 0, (struct sockaddr *)&ot_addr, &ot_addr_len);
       if (m == -1) die("recv");
       write(1, sbuf, m);
-      if (!recieved) {
+      if (!recording) {
         start_rec(&rfds_cp, &max_fd, &rec_pid, &rec_pfd);
-        recieved = 1;
+        recording = 1;
       }
+    }
+
+    if (recording && FD_ISSET(rec_pfd, &rfds)) {     // pipe (rec command) readable */
+      int n = read(rec_pfd, sbuf, BUFSIZE);
+      int m_send = sendto(s, sbuf, n, 0, (struct sockaddr *)&ot_addr, ot_addr_len);
+      if (m_send == -1) die("send");
     }
 
     if (FD_ISSET(0, &rfds)) {  // stdin readable
       fgets(cbuf, BUFSIZE, stdin);
       
       if (strcmp(cbuf, "quit\n") == 0) {
-        if (kill(rec_pid, SIGKILL) == -1) die("kill");
-        wait(NULL);
+        if (recording) {
+          if (kill(rec_pid, SIGKILL) == -1) die("kill");
+          wait(NULL);
+        }
         break;
       }
 
@@ -122,25 +124,16 @@ int main(int argc, char **argv){
         char *str = strtok(cbuf, " ");  // "call"
         str = strtok(NULL, " ");        // ip address
         if (str == NULL) die("argument");
-        //fprintf(stderr, "ip = %s\n", str);
         ot_addr.sin_addr.s_addr = inet_addr(str);
         str = strtok(NULL, " ");        // port
         if (str == NULL) die("argument");
         str[strlen(str) - 1] = '\0';    // delete LF
-        //fprintf(stderr, "port = %s\n", str);
         ot_addr.sin_port = htons(atoi(str));
         ot_addr_len = sizeof(ot_addr);
 
-        recieved = 1;
+        recording = 1;
         start_rec(&rfds_cp, &max_fd, &rec_pid, &rec_pfd);
       }
-    }
-
-    if (FD_ISSET(rec_pfd, &rfds_cp)) {     // pipe (rec command) readable */
-      int n = read(rec_pfd, sbuf, BUFSIZE);
-      int m_send = sendto(s, sbuf, n, 0, (struct sockaddr *)&ot_addr, ot_addr_len);
-      if (m_send == -1) die("send");
-
     }
   }
 
