@@ -1,10 +1,16 @@
 # ip-phone
 
-## コンパイル  
+## 環境
+基本的にLinuxまたはMacを想定しています。Windows対応は(おそらく)かなりの修正が必要です。
+
+## コンパイル
 gcc -o bin/<program name\>phone_v1.c  
 として実行ファイルをbin内に入れてください。
 (bin内のファイルはGitに無視されるようにしてあります。)  
 後述のportaudioを利用する際は -lportaudio を忘れずに。(ライブラリのパスは環境によって異なります。ちゃんとインストールできていれば特に指定しなくても良いはず。)
+
+## 実行
+bin/<program name\> <ip address\> <TCP port\> <UDP port\> | bin/play.sh
 
 ## 外部ライブラリ
 phone_v3以降はportaudio(オーディオI/O用のCライブラリ、libsoxよりドキュメントがしっかりしていて良さげ)を利用しています。  

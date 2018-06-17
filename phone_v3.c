@@ -17,6 +17,8 @@
 #define SOUND_BUF 10000
 #define CHAR_BUF 200
 #define QUE_LEN 10
+#define SILENT 100
+#define SILENT_FRAMES 8000
 
 #define NO_SESSION  0
 #define NEGOTIATING 1
@@ -27,6 +29,7 @@
 typedef struct {
   int sock;
   struct sockaddr_in *addr;
+  int silent_frames;
 } UDPData_t;
 
 
@@ -56,9 +59,7 @@ int done(PaError err) {
   }
 
   fprintf(stderr, "bye\n");
-
-  if (err != paNoError) exit(err);
-  return err;
+  exit(err);
 }
 
 void die(char *message, PaError err) {   // TODO: error handling (do not die)
@@ -72,6 +73,14 @@ int max(int a, int b) {
   return a > b ? a : b;
 }
 
+int min (int a, int b) {
+  return a < b ? a : b;
+}
+
+int positive_mod(int a, int b) {
+  return a >= 0 ? a % b : a % b + b;
+}
+
 static int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         unsigned long framesPerBuffer,
                         const PaStreamCallbackTimeInfo *timeInfo,
@@ -82,8 +91,26 @@ static int rec_and_send(const void *inputBuffer, void *outputBuffer,
   socklen_t sock_len;
   UDPData_t *data = userData;
 
-  ret = sendto(data->sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)data->addr, sizeof(struct sockaddr_in));
-  if (ret == -1) die("sendto", paNoError);
+  int silent = 1;   // do not send if silent
+
+  for (int i = 0; i < framesPerBuffer; i++) {
+    if (abs(in[i]) > SILENT) {
+      silent = 0;
+      data->silent_frames = 0;
+      break;
+    }
+  }
+
+  if (silent) {
+    data->silent_frames = min(data->silent_frames + framesPerBuffer, SILENT_FRAMES);
+  }
+
+  // send packet even if silent when silent frame is not long enough
+  if (!silent || data->silent_frames < SILENT_FRAMES) {
+    ret = sendto(data->sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)data->addr, sizeof(struct sockaddr_in));
+    if (ret == -1) die("sendto", paNoError);
+  }
+
   in += framesPerBuffer;  // move pointer forward
 
   return paContinue;
@@ -168,6 +195,7 @@ int main(int argc, char **argv) {
   UDPData_t udp_data;
   udp_data.sock = udp_sock;
   udp_data.addr = &ot_udp_addr;
+  udp_data.silent_frames = 0;
   PaStreamParameters inputParameters;
 
   while (1) {   // TODO: receive into UDP when NO_SESSION
@@ -279,6 +307,7 @@ int main(int argc, char **argv) {
           strcpy(cbuf, "OK");
           ret = send(tcp_s, cbuf, strlen(cbuf) + 1, 0);
           if (ret == -1) die("send", err);
+          // fprintf(stderr, "%s : %d\n", ot_ip_addr, ot_udp_port);
 
           open_rec(&audioStream, &inputParameters, &udp_data);
           err = Pa_StartStream(audioStream);
