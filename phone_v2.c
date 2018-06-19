@@ -56,7 +56,7 @@ void create_process(char *cmd, char **args, pid_t *pid, int *pfd) {
 }
 
 void start_rec(fd_set *rfds, int *max_fd, pid_t *pid, int *pfd) {
-  char *args[] = {"rec", "-traw",  "-b16",  "-c1",  "-es",  "-r8000", "-q", "-", "--buffer", "256", NULL};
+  char *args[] = {"rec", "-traw",  "-b16",  "-c1",  "-es",  "-r8000", "-q", "-", "--buffer=256", NULL};
   create_process("rec", args, pid, pfd);
 
   FD_SET(*pfd, rfds);

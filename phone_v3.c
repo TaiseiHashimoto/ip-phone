@@ -331,8 +331,10 @@ int main(int argc, char **argv) {
         char *str = strtok(cbuf, " ");
 
         if (strcmp(str, "quit") == 0) {
+          err = Pa_StopStream(audioStream);
+          if (err != paNoError) die(NULL, err);
           err = Pa_CloseStream(audioStream);
-          if(err != paNoError) die(NULL, err);
+          if (err != paNoError) die(NULL, err);
           state = NO_SESSION;
           break;
         }
