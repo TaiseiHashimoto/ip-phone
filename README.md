@@ -30,10 +30,26 @@ gcc -o <YOUR PROGRAME NAME> phone_v*.c -lportaudio
 
 ## 実行
 ```
-<YOUR PROGRAME NAME> <ip address> <TCP port> <UDP port> | bin/play.sh  
+<YOUR PROGRAME NAME> <TCP port> <UDP port> | bin/play.sh  
 ```
 "TCP port"と"UDP port"は自分のポートです。  
-おそらくLinuxではALSA関連のエラーが出ます(unable to open slaveなどなど)が、特に害はないので無視します。
+
+## コマンド
+- 電話を掛ける
+```
+call <IP address> <TCP port> <UDP port> | bin/play.sh 
+```
+"IP address","TCP port","UDP port"は相手のアドレス、ポートです。
+
+- 電話を受ける
+"anser?"と聞かれるので、 "yes"と入力、エンター
+
+おそらくLinuxでは、通話を始めるとALSA関連のエラーが出ます(unable to open slaveなどなど)が、特に害はないので無視します。
+
+- 終了する
+```
+quit
+```
 
 ## 利用しているライブラリ
 - PortAudio
