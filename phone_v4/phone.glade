@@ -22,7 +22,6 @@
     <property name="title" translatable="yes">ip-phone</property>
     <property name="default_width">400</property>
     <property name="default_height">300</property>
-    <signal name="destroy" handler="gtk_main_quit" swapped="no"/>
     <child>
       <placeholder/>
     </child>
@@ -150,7 +149,7 @@
                 <property name="orientation">vertical</property>
                 <property name="layout_style">start</property>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="call">
                     <property name="label" translatable="yes">発信</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -163,7 +162,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="answer">
                     <property name="label" translatable="yes">着信</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -176,7 +175,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton">
+                  <object class="GtkButton" id="hang_up">
                     <property name="label" translatable="yes">切る</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>

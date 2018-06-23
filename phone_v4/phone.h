@@ -20,8 +20,10 @@ enum Status {
   NEGOTIATING,    // セッションの確立中
   INVITING,       // 呼び出し中
   RINGING,        // コール受信中
-  SPEAKING        // 通話中
+  SPEAKING,       // 通話中
+  QUIT            // アプリケーション全体を終了
 };
+extern enum Status SessionStatus;
 
 // UDPでの送信用の情報を持つ構造体(rec_and_send()で使用)
 typedef struct {
@@ -38,17 +40,18 @@ typedef struct {
   int ot_tcp_port;
   int ot_udp_port;
 } InetData_t;
+extern InetData_t InetData;
 
 typedef struct {
   fd_set rfds;
   fd_set rfds_org;
   int max_fd;
 } MonitorData_t;
+extern MonitorData_t MonitorData;
+
 
 typedef struct {
-  int sock;
-  struct sockaddr_in *addr;
-  int silent_frames;    // 無音が連続しているフレーム数
+  int silent_frames;
 } RecAndSendData_t;
 
 
@@ -67,6 +70,9 @@ enum Columns {
   TCP_PORT
 };
 
+#define DEFAULT_IP_ADDR "192.168.1.1"
+#define DEFAULT_TCP_PORT 50000
+
 /* util.c */
 void die(char *message, PaError err);
 int max(int a, int b);
@@ -80,22 +86,23 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         const PaStreamCallbackTimeInfo *timeInfo,
                         PaStreamCallbackFlags statusFlags,
                         void *userData);
-void open_rec(PaStream **stream, RecAndSendData_t *RecAndSendData);
+void open_rec(PaStream **inStream);
 
 /* gtk.c */
 void add_addr(GtkWidget *widget, gpointer data);
 void remove_addr(GtkWidget *widget, gpointer data);
 void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
-void prepare_to_display(int *argc, char ***argv, GtkData_t *GtkData);
+void prepare_to_display(int *argc, char ***argv);
+void quit_display(GtkWidget *widget, gpointer data);
 
 /* event.c */
-int create_connection(InetData_t *InetData, MonitorData_t *MonitorData, char *str);
-int accept_connection(InetData_t *InetData, MonitorData_t *MonitorData);
-int recv_invitation(InetData_t *InetData, MonitorData_t *MonitorData);
-int send_ok(InetData_t *InetData, MonitorData_t *MonitorData, PaStream **audioStream, RecAndSendData_t *RecAndSendData);
-int recv_ok(InetData_t *InetData, MonitorData_t *MonitorData, PaStream **audioStream, RecAndSendData_t *RecAndSendData);
-int recv_and_play(InetData_t *InetData);
-int stop_speaking(InetData_t *InetData, PaStream *audioStream);
+int create_connection(char *ot_ip_addr, int ot_tcp_port);
+int accept_connection();
+int recv_invitation();
+int send_ok();
+int recv_ok();
+int recv_and_play();
+int stop_speaking();
 
 #endif  // _PHONE_H_

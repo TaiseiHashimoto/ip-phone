@@ -4,10 +4,11 @@
 #include <netinet/udp.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <portaudio.h>
 #include "phone.h"
+
+RecAndSendData_t RecAndSendData;   // rec_and_send()内で使用
 
 /**
  *  終了時に後始末をする
@@ -44,13 +45,12 @@ int done(PaError err) {
 
 /**
  *  portaudioの設定
- *    stream : portaudioのストリーム
- *    inputParameters : portaudioの入力設定用パラメータ
- *    udp_data : UDPでの送信用の情報
+ *    inStream : portaudioの入力用ストリーム
  */
-void open_rec(PaStream **stream, RecAndSendData_t *RecAndSendData) {
+void open_rec(PaStream **inStream) {
   PaError err;
   PaStreamParameters inputParameters;
+  RecAndSendData.silent_frames = 0;   // 初期化
 
   err = Pa_Initialize();
   
@@ -64,14 +64,14 @@ void open_rec(PaStream **stream, RecAndSendData_t *RecAndSendData) {
   inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;  // レイテンシの設定
   inputParameters.hostApiSpecificStreamInfo = NULL;  // デバイスドライバの設定
 
-  err = Pa_OpenStream(stream,
+  err = Pa_OpenStream(inStream,
                       &inputParameters,
                       NULL,               // outputは使用しない
                       SAMPLE_RATE,        // サンプリング周波数
                       paFramesPerBufferUnspecified,  // 自動的に最適なバッファサイズが設定される
                       paClipOff,          // クリップしたデータは使わない
                       rec_and_send,       // コールバック関数
-                      RecAndSendData);          // UDPでの送信用の情報
+                      NULL);          // UDPでの送信用の情報
   if (err != paNoError) die(NULL, err);
 }
 
@@ -83,7 +83,7 @@ void open_rec(PaStream **stream, RecAndSendData_t *RecAndSendData) {
  *    framesPerBuffer : 1回のコールで扱うバッファのサイズ
  *    timeInfo : portaudioの時間に関する構造体へのポインタ(使用しない)
  *    statusFlag : portaudioの状態に関する構造体へのポインタ(使用しない)
- *    userData : UDPData_t型の構造体へのポインタ
+ *    userData : コールバック関数に渡すデータ(使用しない)
  */
 int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         unsigned long framesPerBuffer,
@@ -92,14 +92,13 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         void *userData) {
   int ret;
   short *in = (short *)inputBuffer; // 16bit(2Byte)で符号化しているのでshort型にキャスト
-  RecAndSendData_t *data = userData;       // UDPでの送信用の情報
 
   int silent = 1;   // 沈黙かどうかのフラグ(沈黙なら送らない)
 
   for (int i = 0; i < framesPerBuffer; i++) {
     if (abs(in[i]) > SILENT) {    // 音量が無音の閾値より大きい場合
       silent = 0;                 // フラグを下ろす
-      data->silent_frames = 0;    // 無音が連続しているフレーム数を0にリセット
+      RecAndSendData.silent_frames = 0;    // 無音が連続しているフレーム数を0にリセット
       break;
     }
   }
@@ -107,12 +106,12 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
   if (silent) {
     /* 無音が連続しているフレーム数に今回のフレーム数を足すが、SILENT_FRAMESより
        大きい値にはしない(しても意味がないし、オーバーフローが起こりうる) */
-    data->silent_frames = min(data->silent_frames + framesPerBuffer, SILENT_FRAMES);
+    RecAndSendData.silent_frames = min(RecAndSendData.silent_frames + framesPerBuffer, SILENT_FRAMES);
   }
 
   // 今回無音でないか、無音が連続しているフレーム数がSILENT_FREMESより少ない場合
-  if (!silent || data->silent_frames < SILENT_FRAMES) {
-    ret = sendto(data->sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)data->addr, sizeof(struct sockaddr_in));
+  if (!silent || RecAndSendData.silent_frames < SILENT_FRAMES) {
+    ret = sendto(InetData.udp_sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)&InetData.ot_udp_addr, sizeof(struct sockaddr_in));
     if (ret == -1) die("sendto", paNoError);
   }
 
