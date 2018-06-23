@@ -1,0 +1,122 @@
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <portaudio.h>
+#include "phone.h"
+
+/**
+ *  終了時に後始末をする
+ *    err : portaudioのエラーハンドリング用変数
+ */
+int done(PaError err) {
+  const PaHostErrorInfo* herr;
+
+  Pa_Terminate();
+
+  if(err != paNoError) {
+    fprintf(stderr, "An error occured while using portaudio\n");
+    if(err == paUnanticipatedHostError) {
+      fprintf(stderr, " unanticipated host error.\n");
+      herr = Pa_GetLastHostErrorInfo();
+      if (herr) {
+        fprintf( stderr, " Error number: %ld\n", herr->errorCode );
+        if (herr->errorText) {
+          fprintf(stderr, " Error text: %s\n", herr->errorText );
+        }
+      } else {
+        fprintf(stderr, " Pa_GetLastHostErrorInfo() failed!\n" );
+      }
+    } else {
+      fprintf(stderr, " Error number: %d\n", err );
+      fprintf(stderr, " Error text: %s\n", Pa_GetErrorText( err ) );
+    }
+    err = 1;
+  }
+
+  fprintf(stderr, "bye\n");
+  exit(err);
+}
+
+/**
+ *  portaudioの設定
+ *    stream : portaudioのストリーム
+ *    inputParameters : portaudioの入力設定用パラメータ
+ *    udp_data : UDPでの送信用の情報
+ */
+void open_rec(PaStream **stream, RecAndSendData_t *RecAndSendData) {
+  PaError err;
+  PaStreamParameters inputParameters;
+
+  err = Pa_Initialize();
+  
+  inputParameters.device = Pa_GetDefaultInputDevice();
+  if (inputParameters.device == paNoDevice) {
+    fprintf(stderr,"Error: No input default device.\n");
+    die(NULL, err);
+  }
+  inputParameters.channelCount = 1;          // モノラル
+  inputParameters.sampleFormat = paInt16;    // 16bit 整数
+  inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;  // レイテンシの設定
+  inputParameters.hostApiSpecificStreamInfo = NULL;  // デバイスドライバの設定
+
+  err = Pa_OpenStream(stream,
+                      &inputParameters,
+                      NULL,               // outputは使用しない
+                      SAMPLE_RATE,        // サンプリング周波数
+                      paFramesPerBufferUnspecified,  // 自動的に最適なバッファサイズが設定される
+                      paClipOff,          // クリップしたデータは使わない
+                      rec_and_send,       // コールバック関数
+                      RecAndSendData);          // UDPでの送信用の情報
+  if (err != paNoError) die(NULL, err);
+}
+
+
+/**
+ *  録音し、UDPを用いて送信する　portaudioのコールバック関数
+ *    inputBuffer : portaudioの入力バッファ　録音データをここから読み出せる
+ *    outputBuffer : portaudioの出力バッファ(使用しない)
+ *    framesPerBuffer : 1回のコールで扱うバッファのサイズ
+ *    timeInfo : portaudioの時間に関する構造体へのポインタ(使用しない)
+ *    statusFlag : portaudioの状態に関する構造体へのポインタ(使用しない)
+ *    userData : UDPData_t型の構造体へのポインタ
+ */
+int rec_and_send(const void *inputBuffer, void *outputBuffer,
+                        unsigned long framesPerBuffer,
+                        const PaStreamCallbackTimeInfo *timeInfo,
+                        PaStreamCallbackFlags statusFlags,
+                        void *userData) {
+  int ret;
+  short *in = (short *)inputBuffer; // 16bit(2Byte)で符号化しているのでshort型にキャスト
+  RecAndSendData_t *data = userData;       // UDPでの送信用の情報
+
+  int silent = 1;   // 沈黙かどうかのフラグ(沈黙なら送らない)
+
+  for (int i = 0; i < framesPerBuffer; i++) {
+    if (abs(in[i]) > SILENT) {    // 音量が無音の閾値より大きい場合
+      silent = 0;                 // フラグを下ろす
+      data->silent_frames = 0;    // 無音が連続しているフレーム数を0にリセット
+      break;
+    }
+  }
+
+  if (silent) {
+    /* 無音が連続しているフレーム数に今回のフレーム数を足すが、SILENT_FRAMESより
+       大きい値にはしない(しても意味がないし、オーバーフローが起こりうる) */
+    data->silent_frames = min(data->silent_frames + framesPerBuffer, SILENT_FRAMES);
+  }
+
+  // 今回無音でないか、無音が連続しているフレーム数がSILENT_FREMESより少ない場合
+  if (!silent || data->silent_frames < SILENT_FRAMES) {
+    ret = sendto(data->sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)data->addr, sizeof(struct sockaddr_in));
+    if (ret == -1) die("sendto", paNoError);
+  }
+
+  in += framesPerBuffer;  // move pointer forward
+
+  return paContinue;
+}
