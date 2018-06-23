@@ -334,20 +334,20 @@ int main(int argc, char **argv) {
     }
 
     else if (status == INVITING) {   // 呼び出し中の場合
-      if (FD_ISSET(tcp_s, &rfds)) {  // TCPソケット
-        ret = recv(tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
-        if (ret == -1 && errno != EAGAIN) die("recv", err);
-        if (strcmp(cbuf, "OK") == 0) {    // TODO: NOの場合
+          if (FD_ISSET(tcp_s, &rfds)) {  // TCPソケット
+	    ret = recv(tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
+	    if (ret == -1 && errno != EAGAIN) die("recv", err);
+	    if (strcmp(cbuf, "quit") == 0) {// TODO: NOの場合
           // 録音、送信の開始
-          open_rec(&audioStream, &inputParameters, &udp_data);
-          err = Pa_StartStream(audioStream);
-          if (err != paNoError) die(NULL, err);
+	      open_rec(&audioStream, &inputParameters, &udp_data);
+	      err = Pa_StartStream(audioStream);
+	      if (err != paNoError) die(NULL, err);
 
-          status = SPEAKING;    // セッションのステータスを"通話中"に変更
-          fprintf(stderr, "speaking\n");
-          continue;
-        }
-      }
+	      status = SPEAKING;    // セッションのステータスを"通話中"に変更
+	      fprintf(stderr, "speaking\n");
+	      continue;
+	    }
+	  }
     }
 
     else if (status == RINGING) {   // 相手から呼び出されている場合
@@ -385,6 +385,10 @@ int main(int argc, char **argv) {
         char *str = strtok(cbuf, " ");
 
         if (strcmp(str, "quit") == 0) {   // quitコマンド
+	  strcpy(cbuf, "quit");
+	  ret = send(tcp_s, cbuf, strlen(cbuf) + 1, 0);
+	  if(ret == -1) die("send", err);
+	  
           err = Pa_StopStream(audioStream);      // portaudioストリームを停止
           if (err != paNoError) die(NULL, err);
           err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
@@ -392,6 +396,13 @@ int main(int argc, char **argv) {
           status = NO_SESSION;    // セッションのステータスを初期化
           break;
         }
+      } else if (FD_ISSET(tcp_s, &rfds)) {  // TCPソケット
+        ret = recv(tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
+        if (ret == -1 && errno != EAGAIN) die("recv", err);
+        if (strcmp(cbuf, "quit") == 0) {
+	  fprintf(stderr, "quit\n");
+	  break;
+	}
       }
     }
   }
