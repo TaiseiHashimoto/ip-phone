@@ -63,6 +63,9 @@ typedef struct {        // Gtk関連のデータを保持する構造体
   GtkListStore *list;           // ツリーのデータモデル
   GtkTreeModel *model;          // GtkListStoreのインターフェース
   GtkTreeSelection *selection;  // ツリービューの選択について制御する
+  GtkWidget *call_button;
+  GtkWidget *answer_button;
+  GtkWidget *hang_up_button;
 } GtkData_t;
 
 enum Columns {
@@ -78,6 +81,7 @@ void die(char *message, PaError err);
 int max(int a, int b);
 int min (int a, int b);
 int positive_mod(int a, int b);
+int validate_ip_addr(char *ip_addr);
 
 /* portaudio.c */
 int done(PaError err);
@@ -93,16 +97,20 @@ void add_addr(GtkWidget *widget, gpointer data);
 void remove_addr(GtkWidget *widget, gpointer data);
 void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
+void enable_call(GtkTreeView *widget, gpointer data);
+void enable_answer (gboolean val);
+void enable_hang_up (gboolean val);
 void prepare_to_display(int *argc, char ***argv);
 void quit_display(GtkWidget *widget, gpointer data);
 
 /* event.c */
-int create_connection(char *ot_ip_addr, int ot_tcp_port);
-int accept_connection();
-int recv_invitation();
-int send_ok();
-int recv_ok();
-int recv_and_play();
-int stop_speaking();
+void create_connection(char *ot_ip_addr, int ot_tcp_port);
+void accept_connection();
+void recv_invitation();
+void send_ok();
+void recv_ok();
+void recv_and_play();
+void send_bye();
+void recv_bye();
 
 #endif  // _PHONE_H_

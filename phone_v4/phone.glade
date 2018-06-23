@@ -165,6 +165,7 @@
                   <object class="GtkButton" id="answer">
                     <property name="label" translatable="yes">着信</property>
                     <property name="visible">True</property>
+                    <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
                   </object>
@@ -176,8 +177,9 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="hang_up">
-                    <property name="label" translatable="yes">切る</property>
+                    <property name="label" translatable="yes">終了</property>
                     <property name="visible">True</property>
+                    <property name="sensitive">False</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
                   </object>

@@ -12,13 +12,11 @@
 static PaStream *inStream;
 // static PaStream *outStream;  // TODO: 出力もportaudioで行う
 
-int create_connection(char *ot_ip_addr, int ot_tcp_port) {
+void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   int ret;
 
-  InetData.ot_tcp_port = ot_tcp_port;
-  InetData.ot_udp_port = ot_tcp_port + 1;   // TODO: セッション管理で取得
-
   // 相手のアドレスを設定
+  InetData.ot_tcp_port = ot_tcp_port;
   InetData.ot_ip_addr = ot_ip_addr;
   ret = inet_aton(InetData.ot_ip_addr, &InetData.ot_tcp_addr.sin_addr);
   if (ret == 0) die("inet", paNoError);
@@ -48,7 +46,7 @@ int create_connection(char *ot_ip_addr, int ot_tcp_port) {
   fprintf(stderr, "inviting\n");
 }
 
-int accept_connection() {
+void accept_connection() {
   socklen_t ot_addr_len = sizeof(struct sockaddr_in);
 
   InetData.tcp_s = accept(InetData.tcp_sock, (struct sockaddr *)&InetData.ot_tcp_addr, &ot_addr_len);
@@ -57,65 +55,51 @@ int accept_connection() {
     // EAGAINはデータが読み込めなかった場合
     // 送信側がconnect => 送信側がキャンセル => 受信側がaccept などの場合に発生する
     // 特にエラーではないのでdieしない
-    return 0;
+    return;
   } else {
     // 相手のIPアドレスを文字列として取得
     InetData.ot_ip_addr = inet_ntoa(InetData.ot_tcp_addr.sin_addr);
     if (InetData.ot_ip_addr == NULL) die("inet_ntoa", paNoError);
+    InetData.ot_tcp_port = ntohs(InetData.ot_tcp_addr.sin_port);
 
     FD_SET(InetData.tcp_s, &MonitorData.rfds_org);    // acceptしたTCPソケットを監視対象に追加
     MonitorData.max_fd = max(MonitorData.max_fd, InetData.tcp_s);
   }
 
-  return 1;
+  SessionStatus = NEGOTIATING;
+  fprintf(stderr, "negotiating\n");
 }
 
-int recv_invitation() {
+void recv_invitation() {
   int ret;
   char cbuf[CHAR_BUF];
 
   ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
   if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+
   char *str = strtok(cbuf, " ");
   if (strcmp(str, "INVITE") == 0) {
     str = strtok(NULL, " ");    // 相手のUDPポートをINVITEメッセージから取得する
     if (str == NULL) die("argument (UDP port)", paNoError);
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
-  }
 
-  return 1;
+    enable_answer(TRUE);    // 受信ボタンを有効化
+
+    SessionStatus = RINGING;
+    fprintf(stderr, "answer ? ");
+  }
 }
 
-int recv_ok() {
-  int ret;
-  PaError err;
-  char cbuf[CHAR_BUF];
-
-  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
-  fprintf(stderr, "recved \"%s\"\n", cbuf);
-  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
-  if (strcmp(cbuf, "OK") == 0) {    // TODO: NOの場合
-    // 録音、送信の開始
-    fprintf(stderr, "recv OK\n");
-    open_rec(&inStream);
-    err = Pa_StartStream(inStream);
-    if (err != paNoError) die(NULL, err);
-    fprintf(stderr, "record start\n");
-
-    return 1;
-  }
-
-  return 0;
-}
-
-int send_ok() {
+void send_ok() {
   int ret;
   PaError err;
   char cbuf[CHAR_BUF];
 
   // OKメッセージを送信
-  strcpy(cbuf, "OK");
+  // この際自分のUDPポートを相手に通知する
+  // 形式 : OK <my UDP port>
+  sprintf(cbuf, "OK %d", InetData.my_udp_port);
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
   if (ret == -1) die("send", paNoError);
 
@@ -124,27 +108,80 @@ int send_ok() {
   err = Pa_StartStream(inStream);
   if (err != paNoError) die(NULL, err);
 
-  return 1;
+  enable_hang_up(TRUE);    // 終了ボタンを有効化
+
+  SessionStatus = SPEAKING;
+  fprintf(stderr, "speaking\n");
 }
 
-int recv_and_play() {
+void recv_ok() {
+  int ret;
+  PaError err;
+  char cbuf[CHAR_BUF];
+
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
+  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+
+  char *str = strtok(cbuf, " ");
+  if (strcmp(str, "OK") == 0) {    // TODO: NOの場合
+    str = strtok(NULL, " ");    // 相手のUDPポートをINVITEメッセージから取得する
+    if (str == NULL) die("argument (UDP port)", paNoError);
+    InetData.ot_udp_port = atoi(str);
+    InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
+    
+    open_rec(&inStream);      // 録音、送信の開始
+    err = Pa_StartStream(inStream);
+    if (err != paNoError) die(NULL, err);
+
+    enable_hang_up(TRUE);    // 終了ボタンを有効化
+
+    SessionStatus = SPEAKING;
+    fprintf(stderr, "speaking\n");
+  }
+}
+
+void recv_and_play() {
   short sbuf[SOUND_BUF];
   socklen_t ot_addr_len = sizeof(struct sockaddr_in);
 
   int n = recvfrom(InetData.udp_sock, sbuf, SOUND_BUF, MSG_DONTWAIT, (struct sockaddr *)&InetData.ot_udp_addr, &ot_addr_len);
   if (n == -1 && errno != EAGAIN) die("recv", paNoError);
   write(1, sbuf, n);    // 標準出力に書き込み TODO: playもportaudioに変更
-
-  return 1;
 }
 
-int stop_speaking() {
+void send_bye() {
   PaError err;
+  int ret;
 
   err = Pa_StopStream(inStream);      // portaudioストリームを停止
   if (err != paNoError) die(NULL, err);
   err = Pa_CloseStream(inStream);     // portaudioストリームをクローズ
   if (err != paNoError) die(NULL, err);
 
-  return 1;
+  char cbuf[CHAR_BUF];
+  strcpy(cbuf, "BYE");
+  ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
+  if (ret == -1) die("send", paNoError);
+
+  SessionStatus = NO_SESSION;
+  fprintf(stderr, "stop speaking\n");
+}
+
+void recv_bye() {
+  PaError err;
+  int ret;
+  char cbuf[CHAR_BUF];
+
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
+  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+
+  if (strcmp(cbuf, "BYE") == 0) {
+    err = Pa_StopStream(inStream);      // portaudioストリームを停止
+    if (err != paNoError) die(NULL, err);
+    err = Pa_CloseStream(inStream);     // portaudioストリームをクローズ
+    if (err != paNoError) die(NULL, err);
+
+    SessionStatus = NO_SESSION;
+    fprintf(stderr, "stop speaking\n");
+  }
 }

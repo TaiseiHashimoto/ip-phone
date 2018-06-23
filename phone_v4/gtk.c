@@ -23,7 +23,11 @@ void remove_addr(GtkWidget *widget, gpointer data) {
 void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data) {
   GtkTreeIter iter;
   if (!gtk_tree_model_get_iter_from_string(GtkData.model, &iter, path)) die("get iter", paNoError);
-  gtk_list_store_set(GtkData.list, &iter, IP_ADDR, new_text, -1);
+  if (validate_ip_addr(new_text)) {
+    gtk_list_store_set(GtkData.list, &iter, IP_ADDR, new_text, -1);
+  } else {
+    fprintf(stderr, "invalid ip address\n");
+  }
 }
 
 void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data) {
@@ -31,6 +35,23 @@ void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gp
   if (!gtk_tree_model_get_iter_from_string(GtkData.model, &iter, path)) die("get iter", paNoError);
   int port = atoi(new_text);
   gtk_list_store_set(GtkData.list, &iter, TCP_PORT, port, -1);
+}
+
+void enable_call(GtkTreeView *widget, gpointer data) {
+  if (gtk_tree_selection_get_selected(GtkData.selection, &GtkData.model, NULL)) {
+    // 選択された行がある場合
+    gtk_widget_set_sensitive(GtkData.call_button, TRUE);
+  } else {
+    gtk_widget_set_sensitive(GtkData.call_button, FALSE);
+  }
+}
+
+void enable_answer (gboolean val) {
+  gtk_widget_set_sensitive(GtkData.answer_button, val);
+}
+
+void enable_hang_up (gboolean val) {
+  gtk_widget_set_sensitive(GtkData.hang_up_button, val);
 }
 
 void call(GtkWidget *widget, gpointer data) {
@@ -52,12 +73,15 @@ void call(GtkWidget *widget, gpointer data) {
 
 void answer(GtkWidget *widget, gpointer data) {
   send_ok();
-  SessionStatus = SPEAKING;
-  fprintf(stderr, "speaking\n");
 }
 
 void hang_up(GtkWidget *widget, gpointer data) {
-  stop_speaking();
+  send_bye();
+}
+
+void quit_display(GtkWidget *widget, gpointer data) {
+  gtk_widget_destroy(widget);
+  SessionStatus = QUIT;
 }
 
 void prepare_to_display(int *argc, char ***argv) {
@@ -78,6 +102,7 @@ void prepare_to_display(int *argc, char ***argv) {
   g_signal_connect(GtkData.window, "destroy", G_CALLBACK(quit_display), NULL);
 
   GtkData.view = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tree_view"));
+  g_signal_connect(GtkData.view, "cursor-changed", G_CALLBACK(enable_call), NULL);
 
   GtkData.selection = gtk_tree_view_get_selection(GtkData.view);
 
@@ -87,14 +112,14 @@ void prepare_to_display(int *argc, char ***argv) {
   button = GTK_WIDGET(gtk_builder_get_object(builder, "remove_addr"));
   g_signal_connect(button, "clicked", G_CALLBACK(remove_addr), NULL);
 
-  button = GTK_WIDGET(gtk_builder_get_object(builder, "call"));
-  g_signal_connect(button, "clicked", G_CALLBACK(call), NULL);
+  GtkData.call_button = GTK_WIDGET(gtk_builder_get_object(builder, "call"));
+  g_signal_connect(GtkData.call_button, "clicked", G_CALLBACK(call), NULL);
 
-  button = GTK_WIDGET(gtk_builder_get_object(builder, "answer"));
-  g_signal_connect(button, "clicked", G_CALLBACK(answer), NULL);
+  GtkData.answer_button = GTK_WIDGET(gtk_builder_get_object(builder, "answer"));
+  g_signal_connect(GtkData.answer_button, "clicked", G_CALLBACK(answer), NULL);
 
-  button = GTK_WIDGET(gtk_builder_get_object(builder, "hang_up"));
-  g_signal_connect(button, "clicked", G_CALLBACK(hang_up), NULL);
+  GtkData.hang_up_button = GTK_WIDGET(gtk_builder_get_object(builder, "hang_up"));
+  g_signal_connect(GtkData.hang_up_button, "clicked", G_CALLBACK(hang_up), NULL);
 
   renderer = GTK_CELL_RENDERER(gtk_builder_get_object(builder, "ip_addr_ren"));
   g_signal_connect(renderer, "edited", G_CALLBACK(edit_ip_addr), NULL);
@@ -109,15 +134,11 @@ void prepare_to_display(int *argc, char ***argv) {
                       0, "192.168.1.6",
                       1, 50000,
                       -1);
+  enable_call(GtkData.view, NULL);
 
   GtkData.model = GTK_TREE_MODEL(GtkData.list);
 
   g_object_unref(builder);
 
   gtk_widget_show(GtkData.window);
-}
-
-void quit_display(GtkWidget *widget, gpointer data) {
-  gtk_widget_destroy(widget);
-  SessionStatus = QUIT;
 }

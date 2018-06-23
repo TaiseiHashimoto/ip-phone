@@ -1,3 +1,6 @@
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "phone.h"
 
 /**
@@ -28,4 +31,9 @@ int min (int a, int b) {
  */
 int positive_mod(int a, int b) {
   return a >= 0 ? a % b : a % b + b;
+}
+
+int validate_ip_addr(char *ip_addr) {
+  struct in_addr addr;
+  return inet_aton(ip_addr, &addr);
 }
