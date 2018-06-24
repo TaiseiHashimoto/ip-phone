@@ -228,9 +228,6 @@
             <property name="justification">center</property>
             <property name="cursor_visible">False</property>
             <property name="buffer">inviting_tb</property>
-            <style>
-              <class name="gray_back"/>
-            </style>
           </object>
         </child>
       </object>
@@ -292,9 +289,6 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">ringing_tb</property>
             <property name="accepts_tab">False</property>
-            <style>
-              <class name="gray_back"/>
-            </style>
           </object>
         </child>
       </object>
@@ -371,9 +365,6 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">speaking_tb</property>
             <property name="accepts_tab">False</property>
-            <style>
-              <class name="gray_back"/>
-            </style>
           </object>
         </child>
       </object>

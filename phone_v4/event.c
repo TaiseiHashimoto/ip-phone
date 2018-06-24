@@ -169,8 +169,6 @@ void send_bye() {
 
   SessionStatus = NO_SESSION;
   fprintf(stderr, "stop speaking\n");
-
-  stop_speaking();
 }
 
 void recv_bye() {
