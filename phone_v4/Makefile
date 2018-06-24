@@ -6,6 +6,7 @@ BINDIR 	= bin
 PROGRAM = $(BINDIR)/phone_v4
 SOURCES = $(wildcard *.c)
 OBJECTS = $(addprefix $(BINDIR)/, $(SOURCES:.c=.o))
+HEADER  = phone.h
 
 .PHONY: clean
 
@@ -14,7 +15,7 @@ all: $(PROGRAM)
 $(PROGRAM): $(OBJECTS)
 	$(CC) $(WALL) -o $@ $^ $(LIBS)
 
-$(BINDIR)/%.o: %.c
+$(BINDIR)/%.o: %.c $(HEADER)
 	$(CC) $(WALL) $(CFLAGS) -o $@ -c $<
 
 clean:

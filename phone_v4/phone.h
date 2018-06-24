@@ -113,6 +113,7 @@ void quit_display(GtkWidget *widget, gpointer data);
 void prepare_to_display(int *argc, char ***argv);
 void ringing();
 void speaking();
+void stop_speaking();
 
 /* event.c */
 void create_connection(char *ot_ip_addr, int ot_tcp_port);

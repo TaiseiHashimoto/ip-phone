@@ -119,6 +119,11 @@ void speaking() {
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
 }
 
+void stop_speaking() {
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+}
+
 G_MODULE_EXPORT
 void hang_up(GtkWidget *widget, gpointer data) {
   send_bye();

@@ -194,6 +194,9 @@
                 <property name="position">1</property>
               </packing>
             </child>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -225,6 +228,9 @@
             <property name="justification">center</property>
             <property name="cursor_visible">False</property>
             <property name="buffer">inviting_tb</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -261,6 +267,9 @@
         <property name="position">1</property>
       </packing>
     </child>
+    <style>
+      <class name="gray_back"/>
+    </style>
   </object>
   <object class="GtkTextBuffer" id="ringing_tb"/>
   <object class="GtkBox" id="ringing_page">
@@ -275,7 +284,6 @@
         <property name="yscale">0</property>
         <child>
           <object class="GtkTextView">
-            <property name="name">test</property>
             <property name="width_request">200</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -284,6 +292,9 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">ringing_tb</property>
             <property name="accepts_tab">False</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -335,6 +346,9 @@
         <property name="position">1</property>
       </packing>
     </child>
+    <style>
+      <class name="gray_back"/>
+    </style>
   </object>
   <object class="GtkTextBuffer" id="speaking_tb"/>
   <object class="GtkBox" id="speaking_page">
@@ -357,6 +371,9 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">speaking_tb</property>
             <property name="accepts_tab">False</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -394,5 +411,8 @@
         <property name="position">1</property>
       </packing>
     </child>
+    <style>
+      <class name="gray_back"/>
+    </style>
   </object>
 </interface>
