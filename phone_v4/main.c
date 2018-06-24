@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
   FD_ZERO(&MonitorData.rfds_org);
   FD_SET(InetData.tcp_sock, &MonitorData.rfds_org);
-  FD_SET(InetData.udp_sock, &MonitorData.rfds_org);
+  // FD_SET(InetData.udp_sock, &MonitorData.rfds_org);
   // FD_SET(STDIN_FILENO, &MonitorData.rfds_org);
 
   SessionStatus = NO_SESSION;   // セッションのステータスを初期化
@@ -69,6 +69,8 @@ int main(int argc, char **argv) {
   MonitorData.max_fd = max(InetData.tcp_sock, InetData.udp_sock);
 
   prepare_to_display(&argc, &argv);   // Gtkの初期設定
+  PaError err = Pa_Initialize();
+  if (err != paNoError) die(NULL, err);   // PortAudioの初期化
 
   while (1) {   // TODO: セッション未開始時もUDPで受信してしまう => 無限ループ
     timeout.tv_sec = timeout.tv_usec = 0;   // ブロックしない
@@ -99,8 +101,8 @@ int main(int argc, char **argv) {
       break;
 
     case SPEAKING:    // 通話中の場合
-      if (FD_ISSET(InetData.udp_sock, &MonitorData.rfds))  // UDPソケット
-        recv_and_play();
+      // if (FD_ISSET(InetData.udp_sock, &MonitorData.rfds))  // UDPソケット
+      //   recv_and_play();
       if (FD_ISSET(InetData.tcp_s, &MonitorData.rfds))
         recv_bye();
       break;

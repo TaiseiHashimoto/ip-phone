@@ -9,11 +9,11 @@
 #include <gtk/gtk.h>
 
 #define SAMPLE_RATE   8000    // サンプル周波数(Hz)
-#define SOUND_BUF     8000    // 音声データの受信用バッファ長
+#define SOUND_BUF     8000    // 音声データのバッファ長
 #define CHAR_BUF      200     // セッション管理用文字列のバッファ長
 #define QUE_LEN       10      // 保留中の接続のキューの最大長
 #define SILENT        100     // 無音とみなす音量の閾値  TODO: 自動で調整
-#define SILENT_FRAMES 8000    // 沈黙とみなす、無音の最小連続フレーム数
+#define SILENT_FRAMES 4000    // 沈黙とみなす、無音の最小連続フレーム数
 
 enum Status {
   NO_SESSION,     // セッションを開始していない
@@ -54,6 +54,12 @@ typedef struct {
   int silent_frames;
 } RecAndSendData_t;
 
+typedef struct {
+  short out_buf[SOUND_BUF];
+  int start;
+  int end;
+} RecvAndPlayData_t;
+
 
 #define GLADE_FILE "phone.glade"
 
@@ -92,12 +98,18 @@ int validate_ip_addr(char *ip_addr);
 
 /* portaudio.c */
 int done(PaError err);
+void open_rec(PaStream **inStream);
+void open_play(PaStream **outStream);
 int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         unsigned long framesPerBuffer,
                         const PaStreamCallbackTimeInfo *timeInfo,
                         PaStreamCallbackFlags statusFlags,
                         void *userData);
-void open_rec(PaStream **inStream);
+int recv_and_play(const void *inputBuffer, void *outputBuffer,
+                        unsigned long framesPerBuffer,
+                        const PaStreamCallbackTimeInfo *timeInfo,
+                        PaStreamCallbackFlags statusFlags,
+                        void *userData);
 
 /* gtk.c */
 void add_addr(GtkWidget *widget, gpointer data);
@@ -121,7 +133,6 @@ void accept_connection();
 void recv_invitation();
 void send_ok();
 void recv_ok();
-void recv_and_play();
 void send_bye();
 void recv_bye();
 

@@ -10,7 +10,7 @@
 #include "phone.h"
 
 static PaStream *inStream;
-// static PaStream *outStream;  // TODO: 出力もportaudioで行う
+static PaStream *outStream;
 
 void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   int ret;
@@ -105,9 +105,12 @@ void send_ok() {
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
   if (ret == -1) die("send", paNoError);
 
-  // 録音、送信の開始
-  open_rec(&inStream);
+  
+  open_rec(&inStream);      // 録音、送信の開始
   err = Pa_StartStream(inStream);
+  if (err != paNoError) die(NULL, err);
+  open_play(&outStream);      // 受信、再生の開始
+  err = Pa_StartStream(outStream);
   if (err != paNoError) die(NULL, err);
 
   enable_hang_up(TRUE);    // 終了ボタンを有効化
@@ -134,6 +137,9 @@ void recv_ok() {
     open_rec(&inStream);      // 録音、送信の開始
     err = Pa_StartStream(inStream);
     if (err != paNoError) die(NULL, err);
+    open_play(&outStream);      // 受信、再生の開始
+    err = Pa_StartStream(outStream);
+    if (err != paNoError) die(NULL, err);
 
     enable_hang_up(TRUE);    // 終了ボタンを有効化
 
@@ -142,15 +148,6 @@ void recv_ok() {
 
     speaking();
   }
-}
-
-void recv_and_play() {
-  short sbuf[SOUND_BUF];
-  socklen_t ot_addr_len = sizeof(struct sockaddr_in);
-
-  int n = recvfrom(InetData.udp_sock, sbuf, SOUND_BUF, MSG_DONTWAIT, (struct sockaddr *)&InetData.ot_udp_addr, &ot_addr_len);
-  if (n == -1 && errno != EAGAIN) die("recv", paNoError);
-  write(1, sbuf, n);    // 標準出力に書き込み TODO: playもportaudioに変更
 }
 
 void send_bye() {
