@@ -88,6 +88,8 @@ void recv_invitation() {
 
     SessionStatus = RINGING;
     fprintf(stderr, "answer ? ");
+
+    ringing();
   }
 }
 
@@ -137,6 +139,8 @@ void recv_ok() {
 
     SessionStatus = SPEAKING;
     fprintf(stderr, "speaking\n");
+
+    speaking();
   }
 }
 

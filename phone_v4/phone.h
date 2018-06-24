@@ -59,6 +59,13 @@ typedef struct {
 
 typedef struct {        // Gtk関連のデータを保持する構造体
   GtkWidget *window;            // メインウィンドウ
+  GtkWidget *main_page;
+  GtkWidget *inviting_page;      // 発信中の画面
+  GtkTextBuffer *inviting_tb;
+  GtkWidget *ringing_page;      // 受信中の画面
+  GtkTextBuffer *ringing_tb;
+  GtkWidget *speaking_page;     // 通話中の画面
+  GtkTextBuffer *speaking_tb;
   GtkTreeView *view;            // ツリービュー(表のビュー)
   GtkListStore *list;           // ツリーのデータモデル
   GtkTreeModel *model;          // GtkListStoreのインターフェース
@@ -100,8 +107,12 @@ void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gp
 void enable_call(GtkTreeView *widget, gpointer data);
 void enable_answer (gboolean val);
 void enable_hang_up (gboolean val);
-void prepare_to_display(int *argc, char ***argv);
+void answer(GtkWidget *widget, gpointer data);
+void hang_up(GtkWidget *widget, gpointer data);
 void quit_display(GtkWidget *widget, gpointer data);
+void prepare_to_display(int *argc, char ***argv);
+void ringing();
+void speaking();
 
 /* event.c */
 void create_connection(char *ot_ip_addr, int ot_tcp_port);
