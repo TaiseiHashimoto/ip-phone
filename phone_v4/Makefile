@@ -1,6 +1,6 @@
 CC     	= gcc
 CFLAGS 	= `pkg-config --cflags gtk+-3.0 gmodule-2.0`
-LIBS   	= `pkg-config --libs gtk+-3.0 gmodule-2.0` -lportaudio
+LIBS   	= `pkg-config --libs gtk+-3.0 gmodule-2.0` -lportaudio -lm
 WALL  	= -Wall
 BINDIR 	= bin
 PROGRAM = $(BINDIR)/phone_v4

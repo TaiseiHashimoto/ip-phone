@@ -38,3 +38,7 @@ int validate_ip_addr(char *ip_addr) {
   struct in_addr addr;
   return inet_aton(ip_addr, &addr);
 }
+
+int compare_short(const void *a, const void *b) {
+  return *(short *)a - *(short *)b;
+}

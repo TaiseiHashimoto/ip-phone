@@ -9,12 +9,16 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
-#define SAMPLE_RATE   8000    // サンプル周波数(Hz)
-#define SOUND_BUF     16000    // 音声データのバッファ長
-#define CHAR_BUF      200     // セッション管理用文字列のバッファ長
-#define QUE_LEN       10      // 保留中の接続のキューの最大長
-#define SILENT        1400     // 無音とみなす音量の閾値  TODO: 自動で調整
-#define SILENT_FRAMES 4000    // 沈黙とみなす、無音の最小連続フレーム数
+#define SAMPLE_RATE     8000    // サンプル周波数(Hz)
+#define SOUND_BUF       16000    // 音声データのバッファ長
+#define CHAR_BUF        200     // セッション管理用文字列のバッファ長
+#define QUE_LEN         10      // 保留中の接続のキューの最大長
+
+#define DEFAULT_SILENT  500     // 無音とみなす音量の閾値  TODO: 自動で調整
+#define SILENT_FRAMES   4000    // 沈黙とみなす、無音の最小連続フレーム数
+#define BLOCK_LEN       30
+#define CONVERGE        10
+#define SIGNIFICANT     3
 
 enum Status {
   NO_SESSION,     // セッションを開始していない
@@ -53,14 +57,9 @@ extern MonitorData_t MonitorData;
 
 typedef struct {
   int silent_frames;
+  int check_count;            // ノイズ音量チェックするかどうか
+  short sbuf[SAMPLE_RATE*2];  // 2秒分(暫定的)
 } RecAndSendData_t;
-
-typedef struct {
-  short out_buf[SOUND_BUF];
-  int start;
-  int end;
-} RecvAndPlayData_t;
-
 
 #define GLADE_FILE "phone.glade"
 
@@ -96,6 +95,7 @@ int max(int a, int b);
 int min (int a, int b);
 int positive_mod(int a, int b);
 int validate_ip_addr(char *ip_addr);
+int compare_short(const void *a, const void *b);
 
 /* audio.c */
 int done(PaError err);
