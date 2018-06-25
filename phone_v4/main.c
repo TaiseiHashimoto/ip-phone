@@ -67,8 +67,12 @@ int main(int argc, char **argv) {
 
   gtk_main();  // Gtkのメインループ
 
-  g_io_channel_unref(MonitorData.g_tcp_sock);
-  g_io_channel_unref(MonitorData.g_tcp_s);
+  if (MonitorData.g_tcp_sock)
+    g_io_channel_unref(MonitorData.g_tcp_sock);
+  if (MonitorData.g_tcp_s)
+    g_io_channel_unref(MonitorData.g_tcp_s);
+  if (MonitorData.g_udp_sock)
+    g_io_channel_unref(MonitorData.g_udp_sock);
   
   done(paNoError);
   close(InetData.tcp_sock);
@@ -77,5 +81,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
-

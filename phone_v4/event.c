@@ -13,8 +13,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-static PaStream *inStream;
-static PaStream *outStream;
+static PaStream *audioStream;
 
 void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   int ret;
@@ -117,12 +116,12 @@ void send_ok() {
   if (ret == -1) die("send", paNoError);
 
   
-  open_rec(&inStream);      // 録音、送信の開始
-  err = Pa_StartStream(inStream);
+  open_rec(&audioStream);      // 録音、送信の開始
+  err = Pa_StartStream(audioStream);
   if (err != paNoError) die(NULL, err);
-  open_play(&outStream);      // 受信、再生の開始
-  err = Pa_StartStream(outStream);
-  if (err != paNoError) die(NULL, err);
+
+  MonitorData.g_udp_sock = g_io_channel_unix_new(InetData.udp_sock);
+  g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
 
   SessionStatus = SPEAKING;
   fprintf(stderr, "speaking\n");
@@ -143,12 +142,12 @@ void recv_ok() {
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
     
-    open_rec(&inStream);      // 録音、送信の開始
-    err = Pa_StartStream(inStream);
+    open_rec(&audioStream);      // 録音、送信の開始
+    err = Pa_StartStream(audioStream);
     if (err != paNoError) die(NULL, err);
-    open_play(&outStream);      // 受信、再生の開始
-    err = Pa_StartStream(outStream);
-    if (err != paNoError) die(NULL, err);
+
+    MonitorData.g_udp_sock = g_io_channel_unix_new(InetData.udp_sock);
+    g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
 
     SessionStatus = SPEAKING;
     fprintf(stderr, "speaking\n");
@@ -161,9 +160,9 @@ void send_bye() {
   PaError err;
   int ret;
 
-  err = Pa_StopStream(inStream);      // portaudioストリームを停止
+  err = Pa_StopStream(audioStream);      // portaudioストリームを停止
   if (err != paNoError) die(NULL, err);
-  err = Pa_CloseStream(inStream);     // portaudioストリームをクローズ
+  err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
   if (err != paNoError) die(NULL, err);
 
   char cbuf[CHAR_BUF];
@@ -184,9 +183,9 @@ void recv_bye() {
   if (ret == -1) die("recv", paNoError);
 
   if (strcmp(cbuf, "BYE") == 0) {
-    err = Pa_StopStream(inStream);      // portaudioストリームを停止
+    err = Pa_StopStream(audioStream);      // portaudioストリームを停止
     if (err != paNoError) die(NULL, err);
-    err = Pa_CloseStream(inStream);     // portaudioストリームをクローズ
+    err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
     if (err != paNoError) die(NULL, err);
 
     SessionStatus = NO_SESSION;

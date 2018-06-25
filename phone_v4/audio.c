@@ -50,9 +50,9 @@ int done(PaError err) {
 
 /**
  *  portaudioの設定
- *    inStream : portaudioの入力用ストリーム
+ *    audioStream : portaudioの入力用ストリーム
  */
-void open_rec(PaStream **inStream) {
+void open_rec(PaStream **audioStream) {
   PaError err;
   PaStreamParameters inputParameters;
   
@@ -66,38 +66,13 @@ void open_rec(PaStream **inStream) {
   inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;  // レイテンシの設定
   inputParameters.hostApiSpecificStreamInfo = NULL;  // デバイスドライバの設定
 
-  err = Pa_OpenStream(inStream,
+  err = Pa_OpenStream(audioStream,
                       &inputParameters,
                       NULL,               // outputは使用しない
                       SAMPLE_RATE,        // サンプリング周波数
                       paFramesPerBufferUnspecified,  // 自動的に最適なバッファサイズが設定される
                       paClipOff,          // クリップしたデータは使わない
                       rec_and_send,       // コールバック関数
-                      NULL);
-  if (err != paNoError) die(NULL, err);
-}
-
-void open_play(PaStream **outStream) {
-  PaError err;
-  PaStreamParameters outputParameters;
-
-  outputParameters.device = Pa_GetDefaultOutputDevice();
-  if (outputParameters.device == paNoDevice) {
-    fprintf(stderr,"Error: No input default device.\n");
-    die(NULL, paNoError);
-  }
-  outputParameters.channelCount = 1;
-  outputParameters.sampleFormat = paInt16;
-  outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
-  outputParameters.hostApiSpecificStreamInfo = NULL;
-
-  err = Pa_OpenStream(outStream,
-                      NULL,
-                      &outputParameters,
-                      SAMPLE_RATE,
-                      paFramesPerBufferUnspecified,
-                      paClipOff,
-                      recv_and_play,
                       NULL);
   if (err != paNoError) die(NULL, err);
 }
@@ -150,41 +125,14 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
   return paContinue;
 }
 
-int recv_and_play(const void *inputBuffer, void *outputBuffer,
-                        unsigned long framesPerBuffer,
-                        const PaStreamCallbackTimeInfo *timeInfo,
-                        PaStreamCallbackFlags statusFlags,
-                        void *userData) {
-  int n;
-  short *out = (short *)outputBuffer;
-  short sbuf[SOUND_BUF];
+
+gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d) {
+  short sbuf[SOUND_BUF/2];
   socklen_t ot_addr_len = sizeof(struct sockaddr_in);
 
-  n = recvfrom(InetData.udp_sock, sbuf, SOUND_BUF, MSG_DONTWAIT, 
-          (struct sockaddr *)&InetData.ot_udp_addr, &ot_addr_len);
-  if (n == -1 && errno != EAGAIN) die("recvfrom", paNoError);
-  // if (n > 0) fprintf(stderr, "received %d bytes\n", n);
+  int n = recvfrom(InetData.udp_sock, sbuf, SOUND_BUF, 0, (struct sockaddr *)&InetData.ot_udp_addr, &ot_addr_len);
+  if (n == -1) die("recv", paNoError);
+  write(1, sbuf, n);
 
-  for (int i = 0; i < n/2; i++) {
-    RecvAndPlayData.out_buf[RecvAndPlayData.end] = sbuf[i];
-    RecvAndPlayData.end = (RecvAndPlayData.end + 1) % SOUND_BUF;
-  }
-
-  unsigned long framesToGo = min(
-    framesPerBuffer, 
-    positive_mod(RecvAndPlayData.end - RecvAndPlayData.start, SOUND_BUF)
-  );
-
-  // if (framesToGo > 0) fprintf(stderr, "%ld, %d\n",framesPerBuffer, positive_mod(RecvAndPlayData.end - RecvAndPlayData.start, SOUND_BUF));
-
-  for (int i = 0; i < framesToGo; i++) {
-    *out++ = RecvAndPlayData.out_buf[RecvAndPlayData.start];
-    RecvAndPlayData.start = (RecvAndPlayData.start + 1) % SOUND_BUF;
-  }
-
-  for (int i = 0; i < framesPerBuffer - framesToGo; i++) {
-    *out++ = 0;
-  }
-
-  return paContinue;
+  return TRUE;
 }

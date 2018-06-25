@@ -10,10 +10,10 @@
 #include <stdlib.h>
 
 #define SAMPLE_RATE   8000    // サンプル周波数(Hz)
-#define SOUND_BUF     8000    // 音声データのバッファ長
+#define SOUND_BUF     16000    // 音声データのバッファ長
 #define CHAR_BUF      200     // セッション管理用文字列のバッファ長
 #define QUE_LEN       10      // 保留中の接続のキューの最大長
-#define SILENT        800     // 無音とみなす音量の閾値  TODO: 自動で調整
+#define SILENT        1400     // 無音とみなす音量の閾値  TODO: 自動で調整
 #define SILENT_FRAMES 4000    // 沈黙とみなす、無音の最小連続フレーム数
 
 enum Status {
@@ -46,6 +46,7 @@ extern InetData_t InetData;
 typedef struct {
   GIOChannel *g_tcp_sock;
   GIOChannel *g_tcp_s;
+  GIOChannel *g_udp_sock;
 } MonitorData_t;
 extern MonitorData_t MonitorData;
 
@@ -96,20 +97,16 @@ int min (int a, int b);
 int positive_mod(int a, int b);
 int validate_ip_addr(char *ip_addr);
 
-/* portaudio.c */
+/* audio.c */
 int done(PaError err);
-void open_rec(PaStream **inStream);
+void open_rec(PaStream **audioStream);
 void open_play(PaStream **outStream);
 int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         unsigned long framesPerBuffer,
                         const PaStreamCallbackTimeInfo *timeInfo,
                         PaStreamCallbackFlags statusFlags,
                         void *userData);
-int recv_and_play(const void *inputBuffer, void *outputBuffer,
-                        unsigned long framesPerBuffer,
-                        const PaStreamCallbackTimeInfo *timeInfo,
-                        PaStreamCallbackFlags statusFlags,
-                        void *userData);
+gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d);
 
 /* gtk.c */
 void add_addr(GtkWidget *widget, gpointer data);
@@ -127,7 +124,6 @@ void stop_speaking();
 
 /* event.c */
 void create_connection(char *ot_ip_addr, int ot_tcp_port);
-// void accept_connection();
 gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d);
 void recv_invitation();
 void send_ok();
