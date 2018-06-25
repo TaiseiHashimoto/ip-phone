@@ -7,12 +7,13 @@
 #include <netinet/udp.h>
 #include <portaudio.h>
 #include <gtk/gtk.h>
+#include <stdlib.h>
 
 #define SAMPLE_RATE   8000    // サンプル周波数(Hz)
 #define SOUND_BUF     8000    // 音声データのバッファ長
 #define CHAR_BUF      200     // セッション管理用文字列のバッファ長
 #define QUE_LEN       10      // 保留中の接続のキューの最大長
-#define SILENT        100     // 無音とみなす音量の閾値  TODO: 自動で調整
+#define SILENT        800     // 無音とみなす音量の閾値  TODO: 自動で調整
 #define SILENT_FRAMES 4000    // 沈黙とみなす、無音の最小連続フレーム数
 
 enum Status {
