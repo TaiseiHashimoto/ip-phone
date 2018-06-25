@@ -8,6 +8,10 @@
 #include <portaudio.h>
 #include "phone.h"
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 RecAndSendData_t RecAndSendData;   // rec_and_send()で使用
 RecvAndPlayData_t RecvAndPlayData; // recv_and_play()で使用
 
@@ -135,7 +139,10 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
   // 今回無音でないか、無音が連続しているフレーム数がSILENT_FREMESより少ない場合
   if (!silent || RecAndSendData.silent_frames < SILENT_FRAMES) {
     ret = sendto(InetData.udp_sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)&InetData.ot_udp_addr, sizeof(struct sockaddr_in));
-    if (ret == -1) die("sendto", paNoError);
+    if (ret == -1) {
+      fprintf(stderr, "udp : %s %d\n", inet_ntoa(InetData.ot_udp_addr.sin_addr), ntohs(InetData.ot_udp_addr.sin_port));
+      die("sendto", paNoError);
+    }
   }
 
   in += framesPerBuffer;  // move pointer forward

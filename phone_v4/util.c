@@ -12,6 +12,7 @@ void die(char *message, PaError err) {   // TODO: エラーハンドリング(di
   if (message) {
     perror(message);
   }
+  gtk_main_quit();
   done(err);
 }
 

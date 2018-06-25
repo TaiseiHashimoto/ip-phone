@@ -43,9 +43,8 @@ typedef struct {
 extern InetData_t InetData;
 
 typedef struct {
-  fd_set rfds;
-  fd_set rfds_org;
-  int max_fd;
+  GIOChannel *g_tcp_sock;
+  GIOChannel *g_tcp_s;
 } MonitorData_t;
 extern MonitorData_t MonitorData;
 
@@ -117,8 +116,6 @@ void remove_addr(GtkWidget *widget, gpointer data);
 void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void enable_call(GtkTreeView *widget, gpointer data);
-void enable_answer (gboolean val);
-void enable_hang_up (gboolean val);
 void answer(GtkWidget *widget, gpointer data);
 void hang_up(GtkWidget *widget, gpointer data);
 void quit_display(GtkWidget *widget, gpointer data);
@@ -129,11 +126,13 @@ void stop_speaking();
 
 /* event.c */
 void create_connection(char *ot_ip_addr, int ot_tcp_port);
-void accept_connection();
+// void accept_connection();
+gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d);
 void recv_invitation();
 void send_ok();
 void recv_ok();
 void send_bye();
 void recv_bye();
+gboolean assign_task(GIOChannel *s, GIOCondition c, gpointer d);
 
 #endif  // _PHONE_H_

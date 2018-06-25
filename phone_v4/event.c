@@ -9,6 +9,10 @@
 #include <errno.h>
 #include "phone.h"
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 static PaStream *inStream;
 static PaStream *outStream;
 
@@ -31,6 +35,10 @@ void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   ret = connect(InetData.tcp_s, (struct sockaddr *)&InetData.ot_tcp_addr, sizeof(struct sockaddr_in));
   if (ret == -1) die("connect", paNoError);
 
+  // Gtkのメインループで監視
+  MonitorData.g_tcp_s = g_io_channel_unix_new(InetData.tcp_s);
+  g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
+
   // INVITEメッセージを送信
   // この際自分のUDPポートを相手に通知する(TCPポートはaccept時にわかるので不要)
   // 形式 : INVITE <my UDP port>
@@ -39,14 +47,12 @@ void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);  // ヌル文字まで送信するのでstrlen+1
   if (ret == -1) die("send", paNoError);
 
-  FD_SET(InetData.tcp_s, &MonitorData.rfds_org);     // TCPソケットを監視対象に追加
-  MonitorData.max_fd = max(MonitorData.max_fd, InetData.tcp_s);
-
   SessionStatus = INVITING;
   fprintf(stderr, "inviting\n");
 }
 
-void accept_connection() {
+gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d) {
+  int ret;
   socklen_t ot_addr_len = sizeof(struct sockaddr_in);
 
   InetData.tcp_s = accept(InetData.tcp_sock, (struct sockaddr *)&InetData.ot_tcp_addr, &ot_addr_len);
@@ -55,27 +61,34 @@ void accept_connection() {
     // EAGAINはデータが読み込めなかった場合
     // 送信側がconnect => 送信側がキャンセル => 受信側がaccept などの場合に発生する
     // 特にエラーではないのでdieしない
-    return;
+    return TRUE;
   } else {
     // 相手のIPアドレスを文字列として取得
     InetData.ot_ip_addr = inet_ntoa(InetData.ot_tcp_addr.sin_addr);
     if (InetData.ot_ip_addr == NULL) die("inet_ntoa", paNoError);
+    // 相手のTCPポート番号を文字列として取得
     InetData.ot_tcp_port = ntohs(InetData.ot_tcp_addr.sin_port);
+    // UDPのアドレスを設定
+    ret = inet_aton(InetData.ot_ip_addr, &InetData.ot_udp_addr.sin_addr);
+    if (ret == 0) die("inet", paNoError);
 
-    FD_SET(InetData.tcp_s, &MonitorData.rfds_org);    // acceptしたTCPソケットを監視対象に追加
-    MonitorData.max_fd = max(MonitorData.max_fd, InetData.tcp_s);
+    // Gtkのメインループで監視
+    MonitorData.g_tcp_s = g_io_channel_unix_new(InetData.tcp_s);
+    g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
   }
 
   SessionStatus = NEGOTIATING;
   fprintf(stderr, "negotiating\n");
+
+  return TRUE;
 }
 
 void recv_invitation() {
   int ret;
   char cbuf[CHAR_BUF];
 
-  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
-  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
+  if (ret == -1) die("recv", paNoError);
 
   char *str = strtok(cbuf, " ");
   if (strcmp(str, "INVITE") == 0) {
@@ -83,8 +96,6 @@ void recv_invitation() {
     if (str == NULL) die("argument (UDP port)", paNoError);
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
-
-    enable_answer(TRUE);    // 受信ボタンを有効化
 
     SessionStatus = RINGING;
     fprintf(stderr, "answer ? ");
@@ -113,8 +124,6 @@ void send_ok() {
   err = Pa_StartStream(outStream);
   if (err != paNoError) die(NULL, err);
 
-  enable_hang_up(TRUE);    // 終了ボタンを有効化
-
   SessionStatus = SPEAKING;
   fprintf(stderr, "speaking\n");
 }
@@ -124,8 +133,8 @@ void recv_ok() {
   PaError err;
   char cbuf[CHAR_BUF];
 
-  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
-  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
+  if (ret == -1) die("recv", paNoError);
 
   char *str = strtok(cbuf, " ");
   if (strcmp(str, "OK") == 0) {    // TODO: NOの場合
@@ -140,8 +149,6 @@ void recv_ok() {
     open_play(&outStream);      // 受信、再生の開始
     err = Pa_StartStream(outStream);
     if (err != paNoError) die(NULL, err);
-
-    enable_hang_up(TRUE);    // 終了ボタンを有効化
 
     SessionStatus = SPEAKING;
     fprintf(stderr, "speaking\n");
@@ -173,8 +180,8 @@ void recv_bye() {
   int ret;
   char cbuf[CHAR_BUF];
 
-  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, MSG_DONTWAIT);
-  if (ret == -1 && errno != EAGAIN) die("recv", paNoError);
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
+  if (ret == -1) die("recv", paNoError);
 
   if (strcmp(cbuf, "BYE") == 0) {
     err = Pa_StopStream(inStream);      // portaudioストリームを停止
@@ -187,4 +194,26 @@ void recv_bye() {
   }
 
   stop_speaking();
+}
+
+gboolean assign_task(GIOChannel *s, GIOCondition c, gpointer d) {
+  switch (SessionStatus) {
+  case NO_SESSION:
+    break;
+  case NEGOTIATING:   // セッションの確立中の場合
+    recv_invitation();
+    break;
+  case INVITING:      // 呼び出し中の場合
+    recv_ok();
+    break;
+  case RINGING:
+    break;
+  case SPEAKING:    // 通話中の場合
+    recv_bye();
+    break;
+  case QUIT:
+    break;
+  }
+
+  return TRUE;
 }

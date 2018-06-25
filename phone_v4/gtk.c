@@ -55,16 +55,6 @@ void enable_call(GtkTreeView *widget, gpointer data) {
 }
 
 G_MODULE_EXPORT
-void enable_answer(gboolean val) {
-  gtk_widget_set_sensitive(GtkData.answer_button, val);
-}
-
-G_MODULE_EXPORT
-void enable_hang_up(gboolean val) {
-  gtk_widget_set_sensitive(GtkData.hang_up_button, val);
-}
-
-G_MODULE_EXPORT
 void call(GtkWidget *widget, gpointer data) {
   GtkTreeIter iter;
   if (!gtk_tree_selection_get_selected(GtkData.selection, &GtkData.model, &iter)) {
@@ -134,7 +124,8 @@ void hang_up(GtkWidget *widget, gpointer data) {
 
 G_MODULE_EXPORT
 void quit_display(GtkWidget *widget, gpointer data) {
-  gtk_widget_destroy(widget);
+  // gtk_widget_destroy(widget);
+  gtk_main_quit();
   g_object_unref(GtkData.inviting_page);
   g_object_unref(GtkData.ringing_page);
   g_object_unref(GtkData.speaking_page);

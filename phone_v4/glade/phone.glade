@@ -309,7 +309,6 @@
           <object class="GtkButton" id="answer_button">
             <property name="label" translatable="yes">Answer</property>
             <property name="visible">True</property>
-            <property name="sensitive">False</property>
             <property name="can_focus">True</property>
             <property name="receives_default">True</property>
             <signal name="clicked" handler="answer" swapped="no"/>
