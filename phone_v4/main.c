@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
   MonitorData.g_tcp_sock = g_io_channel_unix_new(InetData.tcp_sock);
 
-  g_io_add_watch(MonitorData.g_tcp_sock, G_IO_IN, accept_connection, NULL);
+  MonitorData.tcp_sock_tag = g_io_add_watch(MonitorData.g_tcp_sock, G_IO_IN, accept_connection, NULL);
 
   gtk_main();  // Gtkのメインループ
 

@@ -41,7 +41,11 @@ void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gp
   GtkTreeIter iter;
   if (!gtk_tree_model_get_iter_from_string(GtkData.model, &iter, path)) die("get iter", paNoError);
   int port = atoi(new_text);
-  gtk_list_store_set(GtkData.list, &iter, TCP_PORT, port, -1);
+  if (validate_tcp_port(port)) {
+    gtk_list_store_set(GtkData.list, &iter, TCP_PORT, port, -1);
+  } else {
+    fprintf(stderr, "invalid port number\n");
+  }
 }
 
 G_MODULE_EXPORT
@@ -79,6 +83,19 @@ void call(GtkWidget *widget, gpointer data) {
   gtk_text_buffer_set_text(GtkData.inviting_tb, cbuf, strlen(cbuf));
 }
 
+G_MODULE_EXPORT
+void cancel(GtkWidget *widget, gpointer data) {
+  send_cancel();
+
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+}
+
+void canceled() {
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+}
+
 void ringing() {
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Call from\n%s", InetData.ot_ip_addr);
@@ -98,6 +115,19 @@ void answer(GtkWidget *widget, gpointer data) {
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
+}
+
+G_MODULE_EXPORT
+void decline(GtkWidget *widget, gpointer data) {
+  send_ng();
+
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+}
+
+void declined() {
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.main_page);
 }
 
 void speaking() {

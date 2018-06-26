@@ -36,7 +36,7 @@ void create_connection(char *ot_ip_addr, int ot_tcp_port) {
 
   // Gtkのメインループで監視
   MonitorData.g_tcp_s = g_io_channel_unix_new(InetData.tcp_s);
-  g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
+  MonitorData.tcp_s_tag = g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
 
   // INVITEメッセージを送信
   // この際自分のUDPポートを相手に通知する(TCPポートはaccept時にわかるので不要)
@@ -73,7 +73,7 @@ gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d) {
 
     // Gtkのメインループで監視
     MonitorData.g_tcp_s = g_io_channel_unix_new(InetData.tcp_s);
-    g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
+    MonitorData.tcp_s_tag = g_io_add_watch(MonitorData.g_tcp_s, G_IO_IN, assign_task, NULL);
   }
 
   SessionStatus = NEGOTIATING;
@@ -97,9 +97,42 @@ void recv_invitation() {
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
 
     SessionStatus = RINGING;
-    fprintf(stderr, "answer ? ");
+    fprintf(stderr, "answer?\n");
 
     ringing();
+  }
+}
+
+void send_cancel() {
+  int ret;
+  char cbuf[CHAR_BUF];
+
+  // CANCELメッセージを送信
+  strcpy(cbuf, "CANCEL");
+  ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
+  if (ret == -1) die("send", paNoError);
+  
+  g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
+  MonitorData.tcp_s_tag = 0;
+
+  SessionStatus = SPEAKING;
+  fprintf(stderr, "speaking\n");
+}
+
+void recv_cancel() {
+  int ret;
+  char cbuf[CHAR_BUF];
+
+  ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
+  if (ret == -1) die("recv", paNoError);
+
+  if(strcmp(cbuf, "CANCEL") == 0) {
+    g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
+    MonitorData.tcp_s_tag = 0;
+
+    canceled();
+    SessionStatus = NO_SESSION;
+    fprintf(stderr, "canceled by peer\n");
   }
 }
 
@@ -121,13 +154,28 @@ void send_ok() {
   if (err != paNoError) die(NULL, err);
 
   MonitorData.g_udp_sock = g_io_channel_unix_new(InetData.udp_sock);
-  g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
+  MonitorData.udp_sock_tag = g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
 
   SessionStatus = SPEAKING;
   fprintf(stderr, "speaking\n");
 }
 
-void recv_ok() {
+void send_ng() {
+  int ret;
+  char cbuf[CHAR_BUF];
+
+  strcpy(cbuf, "NG");   // NGメッセージを送信
+  ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
+  if (ret == -1) die("send", paNoError);
+
+  g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
+  MonitorData.tcp_s_tag = 0;
+
+  SessionStatus = NO_SESSION;
+  fprintf(stderr, "declined\n");
+}
+
+void recv_ok_ng() {
   int ret;
   PaError err;
   char cbuf[CHAR_BUF];
@@ -147,12 +195,20 @@ void recv_ok() {
     if (err != paNoError) die(NULL, err);
 
     MonitorData.g_udp_sock = g_io_channel_unix_new(InetData.udp_sock);
-    g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
+    MonitorData.udp_sock_tag = g_io_add_watch(MonitorData.g_udp_sock, G_IO_IN, recv_and_play, NULL);
 
     SessionStatus = SPEAKING;
     fprintf(stderr, "speaking\n");
 
     speaking();
+  }
+  else if(strcmp(str, "NG") == 0) {
+    g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
+    MonitorData.tcp_s_tag = 0;
+
+    declined();
+    SessionStatus = NO_SESSION;
+    fprintf(stderr, "declined by peer\n");
   }
 }
 
@@ -160,10 +216,13 @@ void send_bye() {
   PaError err;
   int ret;
 
-  err = Pa_StopStream(audioStream);      // portaudioストリームを停止
-  if (err != paNoError) die(NULL, err);
+  // err = Pa_StopStream(audioStream);      // portaudioストリームを停止
+  // if (err != paNoError) die(NULL, err);
   err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
   if (err != paNoError) die(NULL, err);
+
+  g_source_remove(MonitorData.udp_sock_tag);   // 監視をやめる
+  MonitorData.udp_sock_tag = 0;
 
   char cbuf[CHAR_BUF];
   strcpy(cbuf, "BYE");
@@ -182,17 +241,21 @@ void recv_bye() {
   ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
   if (ret == -1) die("recv", paNoError);
 
-  if (strcmp(cbuf, "BYE") == 0) {
+  if (strcmp(cbuf, "BYE") == 0 || ret == 0) {   // BYEメッセージ、またはソケットのクローズ
     err = Pa_StopStream(audioStream);      // portaudioストリームを停止
     if (err != paNoError) die(NULL, err);
     err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
     if (err != paNoError) die(NULL, err);
 
+    g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
+    MonitorData.tcp_s_tag = 0;
+    g_source_remove(MonitorData.udp_sock_tag);
+    MonitorData.udp_sock_tag = 0;
+
+    stop_speaking();
     SessionStatus = NO_SESSION;
     fprintf(stderr, "stop speaking\n");
   }
-
-  stop_speaking();
 }
 
 gboolean assign_task(GIOChannel *s, GIOCondition c, gpointer d) {
@@ -203,9 +266,10 @@ gboolean assign_task(GIOChannel *s, GIOCondition c, gpointer d) {
     recv_invitation();
     break;
   case INVITING:      // 呼び出し中の場合
-    recv_ok();
+    recv_ok_ng();
     break;
   case RINGING:
+    recv_cancel();    // 呼び出しキャンセル
     break;
   case SPEAKING:    // 通話中の場合
     recv_bye();

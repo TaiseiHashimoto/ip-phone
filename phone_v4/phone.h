@@ -51,6 +51,9 @@ typedef struct {
   GIOChannel *g_tcp_sock;
   GIOChannel *g_tcp_s;
   GIOChannel *g_udp_sock;
+  guint tcp_sock_tag;
+  guint tcp_s_tag;
+  guint udp_sock_tag;
 } MonitorData_t;
 extern MonitorData_t MonitorData;
 
@@ -95,6 +98,7 @@ int max(int a, int b);
 int min (int a, int b);
 int positive_mod(int a, int b);
 int validate_ip_addr(char *ip_addr);
+int validate_tcp_port(int port);
 int compare_short(const void *a, const void *b);
 
 /* audio.c */
@@ -114,7 +118,12 @@ void remove_addr(GtkWidget *widget, gpointer data);
 void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpointer data);
 void enable_call(GtkTreeView *widget, gpointer data);
+void call(GtkWidget *widget, gpointer data);
+void cancel(GtkWidget *widget, gpointer data);
+void canceled();
 void answer(GtkWidget *widget, gpointer data);
+void decline(GtkWidget *widget, gpointer data);
+void declined();
 void hang_up(GtkWidget *widget, gpointer data);
 void quit_display(GtkWidget *widget, gpointer data);
 void prepare_to_display(int *argc, char ***argv);
@@ -126,8 +135,11 @@ void stop_speaking();
 void create_connection(char *ot_ip_addr, int ot_tcp_port);
 gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d);
 void recv_invitation();
+void send_cancel();
+void recv_cancel();
 void send_ok();
-void recv_ok();
+void send_ng();
+void recv_ok_ng();
 void send_bye();
 void recv_bye();
 gboolean assign_task(GIOChannel *s, GIOCondition c, gpointer d);

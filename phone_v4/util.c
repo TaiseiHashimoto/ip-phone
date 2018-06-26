@@ -12,7 +12,7 @@ void die(char *message, PaError err) {   // TODO: エラーハンドリング(di
   if (message) {
     perror(message);
   }
-  gtk_main_quit();
+  if (gtk_main_level()) gtk_main_quit();
   done(err);
 }
 
@@ -37,6 +37,11 @@ int positive_mod(int a, int b) {
 int validate_ip_addr(char *ip_addr) {
   struct in_addr addr;
   return inet_aton(ip_addr, &addr);
+}
+
+int validate_tcp_port(int port) {
+  if (port >= 49152 && port <= 65535) return 1;
+  return 0;
 }
 
 int compare_short(const void *a, const void *b) {

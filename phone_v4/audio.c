@@ -22,7 +22,6 @@ int done(PaError err) {
   Pa_Terminate();
 
   if(err != paNoError) {
-    fprintf(stderr, "An error occured while using portaudio\n");
     if(err == paUnanticipatedHostError) {
       fprintf(stderr, " unanticipated host error.\n");
       herr = Pa_GetLastHostErrorInfo();
@@ -35,8 +34,7 @@ int done(PaError err) {
         fprintf(stderr, " Pa_GetLastHostErrorInfo() failed!\n" );
       }
     } else {
-      fprintf(stderr, " Error number: %d\n", err );
-      fprintf(stderr, " Error text: %s\n", Pa_GetErrorText( err ) );
+      fprintf(stderr, "portaudio: %s\n", Pa_GetErrorText( err ) );
     }
     err = 1;
   }
