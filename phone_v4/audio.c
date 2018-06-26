@@ -7,10 +7,14 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <portaudio.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "phone.h"
 
 static RecAndSendData_t RecAndSendData;   // rec_and_send()で使用
 short Silent = DEFAULT_SILENT;    // 沈黙かどうかの閾値
+static BellData_t BellData; 
 
 /**
  *  終了時に後始末をする
@@ -183,3 +187,61 @@ gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d) {
 
   return TRUE;
 }
+
+void open_play_bell(PaStream **audioStream) {
+  PaError err;
+  PaStreamParameters outputParameters;
+  
+  outputParameters.device = Pa_GetDefaultOutputDevice();
+  if (outputParameters.device == paNoDevice) {
+    fprintf(stderr,"Error: No output default device.\n");
+    die(NULL, paNoError);
+  }
+  outputParameters.channelCount = 1;          // モノラル
+  outputParameters.sampleFormat = paInt16;    // 16bit 整数
+  outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;  // レイテンシの設定
+  outputParameters.hostApiSpecificStreamInfo = NULL;  // デバイスドライバの設定
+
+  int fd = open("sound/call.raw", O_RDONLY);
+  
+  if(fd == -1) die("bell file open", paNoError);
+
+  BellData.size_data = lseek(fd, 0, SEEK_END) / 2;
+  
+  int n = read(fd, &BellData.bell_data, BellData.size_data);
+  if(n == -1) perror("read bell file");
+  BellData.position = 0;
+  
+  err = Pa_OpenStream(audioStream,
+                      NULL,
+                      &outputParameters,               
+                      SAMPLE_RATE,        // サンプリング周波数
+                      paFramesPerBufferUnspecified,  // 自動的に最適なバッファサイズが設定される
+                      paClipOff,          // クリップしたデータは使わない
+                      play_bell,       // コールバック関数
+                      NULL);
+  if (err != paNoError) die(NULL, err);
+}
+
+int play_bell(const void *inputBuffer, void *outputBuffer,
+                        unsigned long framesPerBuffer,
+                        const PaStreamCallbackTimeInfo *timeInfo,
+                        PaStreamCallbackFlags statusFlags,
+                        void *userData) {
+  
+  short *out = (short *)outputBuffer; // 16bit(2Byte)で符号化しているのでshort型にキャスト
+  int i;
+  for(i = 0; i < framesPerBuffer; i++){
+    *out++ = BellData.bell_data[BellData.position];
+    BellData.position = (BellData.position + 1) % BellData.size_data;
+  }
+  return paContinue;
+}
+  
+
+  
+  
+    
+  
+
+

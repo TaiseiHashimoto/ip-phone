@@ -90,6 +90,13 @@ typedef struct {        // Gtk関連のデータを保持する構造体
   GtkProgressBar *volume_bar;
 } GtkData_t;
 
+typedef struct {
+  int position;
+  short *bell_data;
+  int size_data;
+} BellData_t;
+  
+
 enum Columns {
   IP_ADDR,
   TCP_PORT
@@ -119,6 +126,12 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
                         PaStreamCallbackFlags statusFlags,
                         void *userData);
 gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d);
+int play_bell(const void *inputBuffer, void *outputBuffer,
+                        unsigned long framesPerBuffer,
+                        const PaStreamCallbackTimeInfo *timeInfo,
+                        PaStreamCallbackFlags statusFlags,
+	      void *userData);
+void open_play_bell(PaStream **audioStream);
 
 /* gtk.c */
 void add_addr(GtkWidget *widget, gpointer data);

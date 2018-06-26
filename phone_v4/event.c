@@ -87,6 +87,7 @@ gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d) {
 void recv_invitation() {
   int ret;
   char cbuf[CHAR_BUF];
+  PaError err;
 
   ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
   if (ret == -1) die("recv", paNoError);
@@ -97,6 +98,10 @@ void recv_invitation() {
     if (str == NULL) die("argument (UDP port)", paNoError);
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
+
+    open_play_bell(&audioStream);
+    err = Pa_StartStream(audioStream);
+    if(err != paNoError) die(NULL, err);
 
     SessionStatus = RINGING;
     fprintf(stderr, "answer?\n");
