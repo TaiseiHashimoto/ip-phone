@@ -98,7 +98,7 @@ void recv_invitation() {
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
 
     open_play_bell(&audioStream);
-    err = PaStartStream(audioStream);
+    err = Pa_StartStream(audioStream);
     if(err != paNoError) die(NULL, err);
 
     SessionStatus = RINGING;
