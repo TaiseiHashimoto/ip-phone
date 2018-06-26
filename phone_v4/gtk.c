@@ -6,14 +6,57 @@
 
 static GtkData_t GtkData;
 
+void show_volume(short volume) {
+  double fraction = (double)volume / MAX_VOLUME;
+  if (fraction > 1) fraction = 1;
+  gtk_progress_bar_set_fraction(GtkData.volume_bar, fraction);
+}
+
+void collect_addresses() {
+  int count = 0;
+  GtkTreeIter iter;
+  gboolean result;
+  result = gtk_tree_model_get_iter_first(GtkData.model, &iter);
+  if (!result) {
+    save_address(NULL, NULL, 0);  // ファイルを空にする
+    return;
+  }
+  while(result) {
+    count++;
+    result = gtk_tree_model_iter_next(GtkData.model, &iter);
+  }
+
+  gchararray *ip_addrs = (gchararray *) malloc(sizeof(gchararray) * count);
+  gint *tcp_ports = (gint *) malloc(sizeof(gint) * count);
+
+  result = gtk_tree_model_get_iter_first(GtkData.model, &iter);
+  if (!result) return;
+  int i = 0;
+  while (result) {
+    gtk_tree_model_get(GtkData.model, &iter, 
+                      IP_ADDR, ip_addrs + i,
+                      TCP_PORT, tcp_ports + i,
+                      -1);
+    i++;
+    result = gtk_tree_model_iter_next(GtkData.model, &iter);
+  }
+
+  save_address(ip_addrs, tcp_ports, count);
+
+  for (int i = 0; i < count; i++) free(ip_addrs[i]);
+  free(ip_addrs);
+  free(tcp_ports);
+}
+
 G_MODULE_EXPORT
 void add_addr(GtkWidget *widget, gpointer data) {
   GtkTreeIter iter;
   gtk_list_store_append(GtkData.list, &iter);
   gtk_list_store_set(GtkData.list, &iter,
-                     0, DEFAULT_IP_ADDR,  // デフォルト値
-                     1, DEFAULT_TCP_PORT,
+                     IP_ADDR, DEFAULT_IP_ADDR,  // デフォルト値
+                     TCP_PORT, DEFAULT_TCP_PORT,
                      -1);
+  collect_addresses();
 }
 
 G_MODULE_EXPORT
@@ -23,6 +66,7 @@ void remove_addr(GtkWidget *widget, gpointer data) {
     // 選択された行が見つかった場合
     gtk_list_store_remove(GtkData.list, &iter);
   }
+  collect_addresses();
 }
 
 G_MODULE_EXPORT
@@ -34,6 +78,8 @@ void edit_ip_addr(GtkCellRendererText *widget, gchar *path, gchar *new_text, gpo
   } else {
     fprintf(stderr, "invalid ip address\n");
   }
+
+  collect_addresses();
 }
 
 G_MODULE_EXPORT
@@ -46,6 +92,8 @@ void edit_tcp_port(GtkCellRendererText *widget, gchar *path, gchar *new_text, gp
   } else {
     fprintf(stderr, "invalid port number\n");
   }
+
+  collect_addresses();
 }
 
 G_MODULE_EXPORT
@@ -69,8 +117,8 @@ void call(GtkWidget *widget, gpointer data) {
   gchar *ip_addr;
   gint tcp_port;
   gtk_tree_model_get(GtkData.model, &iter, 
-                      0, &ip_addr,
-                      1, &tcp_port,
+                      IP_ADDR, &ip_addr,
+                      TCP_PORT, &tcp_port,
                       -1);
 
   create_connection(ip_addr, tcp_port);
@@ -81,6 +129,8 @@ void call(GtkWidget *widget, gpointer data) {
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Inviting\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.inviting_tb, cbuf, strlen(cbuf));
+
+  free(ip_addr);
 }
 
 G_MODULE_EXPORT
@@ -136,6 +186,7 @@ void speaking() {
 
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
+  fprintf(stderr, "%s\n", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
 }
 
@@ -203,20 +254,35 @@ void prepare_to_display(int *argc, char ***argv) {
   GtkData.answer_button = GTK_WIDGET(gtk_builder_get_object(builder, "answer_button"));
   GtkData.hang_up_button = GTK_WIDGET(gtk_builder_get_object(builder, "hang_up_button"));
 
-  // アドレスリストに追加
+  // アドレスをファイルから読み込む
+  char **ip_addrs = NULL;
+  int *tcp_ports = NULL;
+  int count = retrieve_address(&ip_addrs, &tcp_ports);
+  // リストに追加
   GtkTreeIter iter;
   GtkData.list = GTK_LIST_STORE(gtk_builder_get_object(builder, "addr_list"));
-  gtk_list_store_append(GtkData.list, &iter);
-  gtk_list_store_set(GtkData.list, &iter,         // TODO: input from file
-                      0, "192.168.1.6",
-                      1, 50000,
-                      -1);
-  enable_call(GtkData.view, NULL);
+  for (int i = 0; i < count; i++) {
+    gtk_list_store_append(GtkData.list, &iter);
+    gtk_list_store_set(GtkData.list, &iter,
+                        IP_ADDR, ip_addrs[i],
+                        TCP_PORT, tcp_ports[i],
+                        -1);
+  }
+  for (int i = 0; i < count; i++) free(ip_addrs[i]);
+  free(ip_addrs);
+  free(tcp_ports);
+  
 
   GtkData.model = GTK_TREE_MODEL(GtkData.list);
 
+  GtkData.volume_bar = GTK_PROGRESS_BAR(gtk_builder_get_object(builder, "volume_bar"));
+
+
   g_object_unref(builder);
   g_object_unref(provider);
+
+  enable_call(GtkData.view, NULL);
+  show_volume(DEFAULT_SILENT);
 
   gtk_widget_show(GtkData.window);
 }

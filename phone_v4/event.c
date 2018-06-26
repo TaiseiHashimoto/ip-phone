@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <string.h>
 #include "phone.h"
 
 #include <sys/socket.h>
@@ -20,7 +21,7 @@ void create_connection(char *ot_ip_addr, int ot_tcp_port) {
 
   // 相手のアドレスを設定
   InetData.ot_tcp_port = ot_tcp_port;
-  InetData.ot_ip_addr = ot_ip_addr;
+  strcpy(InetData.ot_ip_addr, ot_ip_addr);
   ret = inet_aton(InetData.ot_ip_addr, &InetData.ot_tcp_addr.sin_addr);
   if (ret == 0) die("inet", paNoError);
   InetData.ot_tcp_addr.sin_port = htons(InetData.ot_tcp_port);
@@ -63,8 +64,9 @@ gboolean accept_connection(GIOChannel *s, GIOCondition c, gpointer d) {
     return TRUE;
   } else {
     // 相手のIPアドレスを文字列として取得
-    InetData.ot_ip_addr = inet_ntoa(InetData.ot_tcp_addr.sin_addr);
-    if (InetData.ot_ip_addr == NULL) die("inet_ntoa", paNoError);
+    char *str = inet_ntoa(InetData.ot_tcp_addr.sin_addr);
+    if (str == NULL) die("inet_ntoa", paNoError);
+    strcpy(InetData.ot_ip_addr, str);
     // 相手のTCPポート番号を文字列として取得
     InetData.ot_tcp_port = ntohs(InetData.ot_tcp_addr.sin_port);
     // UDPのアドレスを設定

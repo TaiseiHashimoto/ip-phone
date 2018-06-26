@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -46,4 +47,46 @@ int validate_tcp_port(int port) {
 
 int compare_short(const void *a, const void *b) {
   return *(short *)a - *(short *)b;
+}
+
+void save_address(char **ip_addrs, int *tcp_ports, int count) {
+  FILE *fp = fopen(ADDRESS_FILE, "w");
+  if (fp == NULL) die("fopen", paNoError);
+
+  for (int i = 0; i < count; i++) {
+    fprintf(fp, "%s %d\n", ip_addrs[i], tcp_ports[i]);
+  }
+  fclose(fp);
+}
+
+int retrieve_address(char ***ip_addrs, int **tcp_ports) {
+  FILE *fp = fopen(ADDRESS_FILE, "r");
+  if (fp == NULL) return 0;   // ファイルがない場合
+
+  int count = 0;
+  char cbuf[CHAR_BUF] = {};
+  while (fgets(cbuf, CHAR_BUF, fp) != NULL) {
+    // fprintf(stderr, "\"%s\"\n", cbuf);
+    if (cbuf[0] == '\n') break;
+    count++;
+  }
+
+  fseek(fp, 0, SEEK_SET);
+
+  *ip_addrs = (char **) malloc(sizeof(char **) * count);
+  for (int i = 0; i < count; i++) {
+    *ip_addrs[i] = (char *) malloc(sizeof(char *) * count);
+  }
+  *tcp_ports = (int *) malloc(sizeof(int *) * count);
+  int i = 0;
+  while (fgets(cbuf, CHAR_BUF, fp) != NULL) {
+    char *str;
+    str = strtok(cbuf, " ");
+    strcpy(*ip_addrs[i], str);
+    *tcp_ports[i] = atoi(strtok(NULL, "\n"));
+    i++;
+  }
+
+  fclose(fp);
+  return count;
 }

@@ -19,6 +19,11 @@
 #define BLOCK_LEN       30
 #define CONVERGE        10
 #define SIGNIFICANT     3
+#define MAX_VOLUME      2000   // バーに表示するボリュームの最大値
+
+#define IP_ADDR_LEN     20
+
+#define ADDRESS_FILE    "./address/address.txt"
 
 enum Status {
   NO_SESSION,     // セッションを開始していない
@@ -39,7 +44,7 @@ typedef struct {
   struct sockaddr_in my_udp_addr;
   struct sockaddr_in ot_tcp_addr;
   struct sockaddr_in ot_udp_addr;
-  char *ot_ip_addr;
+  char ot_ip_addr[IP_ADDR_LEN];
   int my_tcp_port;
   int my_udp_port;
   int ot_tcp_port;
@@ -82,6 +87,7 @@ typedef struct {        // Gtk関連のデータを保持する構造体
   GtkWidget *call_button;
   GtkWidget *answer_button;
   GtkWidget *hang_up_button;
+  GtkProgressBar *volume_bar;
 } GtkData_t;
 
 enum Columns {
@@ -100,6 +106,8 @@ int positive_mod(int a, int b);
 int validate_ip_addr(char *ip_addr);
 int validate_tcp_port(int port);
 int compare_short(const void *a, const void *b);
+void save_address(char **ip_addrs, int *tcp_ports, int count);
+int retrieve_address(char ***ip_addrs, int **tcp_ports);
 
 /* audio.c */
 int done(PaError err);
@@ -130,6 +138,7 @@ void prepare_to_display(int *argc, char ***argv);
 void ringing();
 void speaking();
 void stop_speaking();
+void show_volume(short volume);
 
 /* event.c */
 void create_connection(char *ot_ip_addr, int ot_tcp_port);

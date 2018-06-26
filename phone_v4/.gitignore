@@ -1,0 +1,4 @@
+bin/*
+!bin/*.sh
+address/address.txt
+glade/*.glade~

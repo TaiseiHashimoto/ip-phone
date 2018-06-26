@@ -9,7 +9,7 @@
 #include <portaudio.h>
 #include "phone.h"
 
-RecAndSendData_t RecAndSendData;   // rec_and_send()で使用
+static RecAndSendData_t RecAndSendData;   // rec_and_send()で使用
 short Silent = DEFAULT_SILENT;    // 沈黙かどうかの閾値
 
 /**
@@ -162,7 +162,10 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
 
   if (RecAndSendData.check_count >= SAMPLE_RATE) {  // 1秒に一回チェック
     int s = determine_threshold();
-    if (s != -1) Silent = s;        // 閾値を更新
+    if (s != -1) {
+      Silent = s;        // 閾値を更新
+      show_volume(Silent);
+    }
     RecAndSendData.check_count = 0;
   }
 
@@ -175,7 +178,6 @@ gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d) {
   socklen_t ot_addr_len = sizeof(struct sockaddr_in);
 
   int n = recvfrom(InetData.udp_sock, sbuf, SOUND_BUF, 0, (struct sockaddr *)&InetData.ot_udp_addr, &ot_addr_len);
-  // fprintf(stderr, "n = %d\n", );
   if (n == -1) die("recv", paNoError);
   write(1, sbuf, n);
 
