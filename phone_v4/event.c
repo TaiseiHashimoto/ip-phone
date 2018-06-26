@@ -18,6 +18,7 @@ static PaStream *audioStream;
 
 void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   int ret;
+  PaError err;
 
   // 相手のアドレスを設定
   InetData.ot_tcp_port = ot_tcp_port;
@@ -46,6 +47,10 @@ void create_connection(char *ot_ip_addr, int ot_tcp_port) {
   sprintf(cbuf, "INVITE %d", InetData.my_udp_port);
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);  // ヌル文字まで送信するのでstrlen+1
   if (ret == -1) die("send", paNoError);
+
+  open_play_bell(&audioStream, OUTGOING_BELL_FILE);  // 発信音を再生
+  err = Pa_StartStream(audioStream);
+  if(err != paNoError) die(NULL, err);
 
   SessionStatus = INVITING;
   fprintf(stderr, "inviting\n");
@@ -99,7 +104,7 @@ void recv_invitation() {
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
 
-    open_play_bell(&audioStream);
+    open_play_bell(&audioStream, INCOMING_BELL_FILE);  // 呼び出し音を再生
     err = Pa_StartStream(audioStream);
     if(err != paNoError) die(NULL, err);
 
@@ -113,6 +118,7 @@ void recv_invitation() {
 void send_cancel() {
   int ret;
   char cbuf[CHAR_BUF];
+  PaError err;
 
   // CANCELメッセージを送信
   strcpy(cbuf, "CANCEL");
@@ -122,13 +128,17 @@ void send_cancel() {
   g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
   MonitorData.tcp_s_tag = 0;
 
+  err = Pa_CloseStream(audioStream);     // 発信音を停止
+  if (err != paNoError) die(NULL, err);
+
   SessionStatus = SPEAKING;
-  fprintf(stderr, "speaking\n");
+  fprintf(stderr, "canceled\n");
 }
 
 void recv_cancel() {
   int ret;
   char cbuf[CHAR_BUF];
+  PaError err;
 
   ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
   if (ret == -1) die("recv", paNoError);
@@ -136,6 +146,9 @@ void recv_cancel() {
   if(strcmp(cbuf, "CANCEL") == 0) {
     g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
     MonitorData.tcp_s_tag = 0;
+
+    err = Pa_CloseStream(audioStream);     // 発信音を停止
+    if (err != paNoError) die(NULL, err);
 
     canceled();
     SessionStatus = NO_SESSION;
@@ -155,7 +168,9 @@ void send_ok() {
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
   if (ret == -1) die("send", paNoError);
 
-  
+  err = Pa_CloseStream(audioStream);     // 呼び出し音を停止
+  if (err != paNoError) die(NULL, err);
+
   open_rec(&audioStream);      // 録音、送信の開始
   err = Pa_StartStream(audioStream);
   if (err != paNoError) die(NULL, err);
@@ -170,6 +185,7 @@ void send_ok() {
 void send_ng() {
   int ret;
   char cbuf[CHAR_BUF];
+  PaError err;
 
   strcpy(cbuf, "NG");   // NGメッセージを送信
   ret = send(InetData.tcp_s, cbuf, strlen(cbuf) + 1, 0);
@@ -177,6 +193,9 @@ void send_ng() {
 
   g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
   MonitorData.tcp_s_tag = 0;
+
+  err = Pa_CloseStream(audioStream);     // 着信音を停止
+  if (err != paNoError) die(NULL, err);
 
   SessionStatus = NO_SESSION;
   fprintf(stderr, "declined\n");
@@ -192,11 +211,14 @@ void recv_ok_ng() {
 
   char *str = strtok(cbuf, " ");
   if (strcmp(str, "OK") == 0) {    // TODO: NOの場合
-    str = strtok(NULL, " ");    // 相手のUDPポートをINVITEメッセージから取得する
+    str = strtok(NULL, " ");  // 相手のUDPポートをINVITEメッセージから取得する
     if (str == NULL) die("argument (UDP port)", paNoError);
     InetData.ot_udp_port = atoi(str);
     InetData.ot_udp_addr.sin_port = htons(InetData.ot_udp_port);
     
+    err = Pa_CloseStream(audioStream);     // 呼び出し音を停止
+    if (err != paNoError) die(NULL, err);
+
     open_rec(&audioStream);      // 録音、送信の開始
     err = Pa_StartStream(audioStream);
     if (err != paNoError) die(NULL, err);
@@ -213,6 +235,9 @@ void recv_ok_ng() {
     g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる
     MonitorData.tcp_s_tag = 0;
 
+    err = Pa_CloseStream(audioStream);     // 呼び出し音を停止
+    if (err != paNoError) die(NULL, err);
+
     declined();
     SessionStatus = NO_SESSION;
     fprintf(stderr, "declined by peer\n");
@@ -223,9 +248,7 @@ void send_bye() {
   PaError err;
   int ret;
 
-  // err = Pa_StopStream(audioStream);      // portaudioストリームを停止
-  // if (err != paNoError) die(NULL, err);
-  err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
+  err = Pa_CloseStream(audioStream);     // 録音を終了
   if (err != paNoError) die(NULL, err);
 
   g_source_remove(MonitorData.udp_sock_tag);   // 監視をやめる
@@ -248,10 +271,9 @@ void recv_bye() {
   ret = recv(InetData.tcp_s, cbuf, CHAR_BUF, 0);
   if (ret == -1) die("recv", paNoError);
 
-  if (strcmp(cbuf, "BYE") == 0 || ret == 0) {   // BYEメッセージ、またはソケットのクローズ
-    err = Pa_StopStream(audioStream);      // portaudioストリームを停止
-    if (err != paNoError) die(NULL, err);
-    err = Pa_CloseStream(audioStream);     // portaudioストリームをクローズ
+  if (strcmp(cbuf, "BYE") == 0 || ret == 0) {
+    // BYEメッセージ、または相手のソケットのクローズ
+    err = Pa_CloseStream(audioStream);     // 録音を終了
     if (err != paNoError) die(NULL, err);
 
     g_source_remove(MonitorData.tcp_s_tag);   // 監視をやめる

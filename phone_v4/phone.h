@@ -23,7 +23,9 @@
 
 #define IP_ADDR_LEN     20
 
-#define ADDRESS_FILE    "./address/address.txt"
+#define ADDRESS_FILE        "./address/address.txt"
+#define INCOMING_BELL_FILE  "./sound/incoming.raw"
+#define OUTGOING_BELL_FILE  "./sound/outgoing.raw"
 
 enum Status {
   NO_SESSION,     // セッションを開始していない
@@ -131,7 +133,7 @@ int play_bell(const void *inputBuffer, void *outputBuffer,
                         const PaStreamCallbackTimeInfo *timeInfo,
                         PaStreamCallbackFlags statusFlags,
 	      void *userData);
-void open_play_bell(PaStream **audioStream);
+void open_play_bell(PaStream **audioStream, char *filename);
 
 /* gtk.c */
 void add_addr(GtkWidget *widget, gpointer data);

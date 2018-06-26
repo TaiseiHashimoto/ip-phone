@@ -188,7 +188,7 @@ gboolean recv_and_play(GIOChannel *s, GIOCondition c, gpointer d) {
   return TRUE;
 }
 
-void open_play_bell(PaStream **audioStream) {
+void open_play_bell(PaStream **audioStream, char *filename) {
   PaError err;
   PaStreamParameters outputParameters;
   
@@ -202,15 +202,16 @@ void open_play_bell(PaStream **audioStream) {
   outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;  // レイテンシの設定
   outputParameters.hostApiSpecificStreamInfo = NULL;  // デバイスドライバの設定
 
-  int fd = open("sound/call.raw", O_RDONLY);
-  
+  int fd = open(filename, O_RDONLY);
   if(fd == -1) die("bell file open", paNoError);
 
   BellData.size_data = lseek(fd, 0, SEEK_END) / 2;
-  
-  int n = read(fd, &BellData.bell_data, BellData.size_data);
+  BellData.bell_data = (short *) malloc(BellData.size_data * 2);
+  lseek(fd, 0, SEEK_SET);
+  int n = read(fd, BellData.bell_data, BellData.size_data * 2);
   if(n == -1) perror("read bell file");
   BellData.position = 0;
+  close(fd);
   
   err = Pa_OpenStream(audioStream,
                       NULL,
@@ -237,11 +238,3 @@ int play_bell(const void *inputBuffer, void *outputBuffer,
   }
   return paContinue;
 }
-  
-
-  
-  
-    
-  
-
-
