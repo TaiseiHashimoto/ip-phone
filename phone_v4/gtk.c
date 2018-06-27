@@ -186,7 +186,6 @@ void speaking() {
 
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
-  fprintf(stderr, "%s\n", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
 }
 

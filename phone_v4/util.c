@@ -66,7 +66,6 @@ int retrieve_address(char ***ip_addrs, int **tcp_ports) {
   int count = 0;
   char cbuf[CHAR_BUF] = {};
   while (fgets(cbuf, CHAR_BUF, fp) != NULL) {
-    // fprintf(stderr, "\"%s\"\n", cbuf);
     if (cbuf[0] == '\n') break;
     count++;
   }

@@ -13,8 +13,8 @@
 #include "phone.h"
 
 static RecAndSendData_t RecAndSendData;   // rec_and_send()で使用
-short Silent = DEFAULT_SILENT;    // 沈黙かどうかの閾値
 static BellData_t BellData; 
+short Silent = DEFAULT_SILENT;    // 沈黙かどうかの閾値
 
 /**
  *  終了時に後始末をする
@@ -143,20 +143,36 @@ int rec_and_send(const void *inputBuffer, void *outputBuffer,
   for (int i = 0; i < framesPerBuffer; i++) {
     if (abs(in[i]) > Silent) {    // 音量が無音の閾値より大きい場合
       silent = 0;                 // フラグを下ろす
-      RecAndSendData.silent_frames = 0;    // 無音が連続しているフレーム数を0にリセット
     }
     RecAndSendData.sbuf[RecAndSendData.check_count++] = in[i];
   }
+  
+  short sbuf[SOUND_BUF];
+  int sbuf_len = 0;
+  int previous_frames = 0;
+  if (RecAndSendData.silent_frames == SILENT_FRAMES && !silent) {
+    // 50ms前のデータから送る
+    previous_frames = min(RecAndSendData.check_count, SAMPLE_RATE/1000*50);
+    for (int i = 0; i < previous_frames; i++) {
+      sbuf[i] = RecAndSendData.sbuf[i];
+    }
+  }
+  for (int i = 0; i < framesPerBuffer; i++) {
+    sbuf[previous_frames + i] = in[i];
+  }
+  sbuf_len = previous_frames + framesPerBuffer;
 
   if (silent) {
     /* 無音が連続しているフレーム数に今回のフレーム数を足すが、SILENT_FRAMESより
        大きい値にはしない(しても意味がないし、オーバーフローが起こりうる) */
     RecAndSendData.silent_frames = min(RecAndSendData.silent_frames + framesPerBuffer, SILENT_FRAMES);
+  } else {
+    RecAndSendData.silent_frames = 0;
   }
 
   // 今回無音でないか、無音が連続しているフレーム数がSILENT_FREMESより少ない場合
   if (!silent || RecAndSendData.silent_frames < SILENT_FRAMES) {
-    ret = sendto(InetData.udp_sock, in, 2 * framesPerBuffer, 0, (struct sockaddr *)&InetData.ot_udp_addr, sizeof(struct sockaddr_in));
+    ret = sendto(InetData.udp_sock, sbuf, 2 * sbuf_len, 0, (struct sockaddr *)&InetData.ot_udp_addr, sizeof(struct sockaddr_in));
     if (ret == -1) {
       die("sendto", paNoError);
     }
