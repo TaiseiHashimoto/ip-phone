@@ -130,6 +130,15 @@ void call(GtkWidget *widget, gpointer data) {
   sprintf(cbuf, "Inviting\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.inviting_tb, cbuf, strlen(cbuf));
 
+  GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.inviting_tb, NULL,
+                        "font", "30", 
+                        "background", "#fafafa",
+                        NULL);
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter(GtkData.inviting_tb, &start);
+  gtk_text_buffer_get_end_iter(GtkData.inviting_tb, &end);
+  gtk_text_buffer_apply_tag (GtkData.inviting_tb, tag, &start, &end);
+
   free(ip_addr);
 }
 
@@ -151,6 +160,15 @@ void ringing() {
   sprintf(cbuf, "Call from\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.ringing_tb, cbuf, strlen(cbuf));
 
+  GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.ringing_tb, NULL,
+                        "font", "30", 
+                        "background", "#fafafa",
+                        NULL);
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter(GtkData.ringing_tb, &start);
+  gtk_text_buffer_get_end_iter(GtkData.ringing_tb, &end);
+  gtk_text_buffer_apply_tag (GtkData.ringing_tb, tag, &start, &end);
+
   gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.main_page);
   gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
 }
@@ -165,6 +183,15 @@ void answer(GtkWidget *widget, gpointer data) {
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
+
+  GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
+                        "font", "30", 
+                        "background", "#fafafa",
+                        NULL);
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter(GtkData.speaking_tb, &start);
+  gtk_text_buffer_get_end_iter(GtkData.speaking_tb, &end);
+  gtk_text_buffer_apply_tag (GtkData.speaking_tb, tag, &start, &end);
 }
 
 G_MODULE_EXPORT
@@ -187,6 +214,15 @@ void speaking() {
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
+
+  GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
+                        "font", "30", 
+                        "background", "#fafafa",
+                        NULL);
+  GtkTextIter start, end;
+  gtk_text_buffer_get_start_iter(GtkData.speaking_tb, &start);
+  gtk_text_buffer_get_end_iter(GtkData.speaking_tb, &end);
+  gtk_text_buffer_apply_tag (GtkData.speaking_tb, tag, &start, &end);
 }
 
 void stop_speaking() {

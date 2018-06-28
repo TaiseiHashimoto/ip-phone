@@ -11,7 +11,7 @@
     </columns>
   </object>
   <object class="GtkAdjustment" id="adjustment1">
-    <property name="lower">1024</property>
+    <property name="lower">49152</property>
     <property name="upper">65535</property>
     <property name="value">5000</property>
     <property name="step_increment">1</property>
@@ -228,6 +228,9 @@
             <property name="justification">center</property>
             <property name="cursor_visible">False</property>
             <property name="buffer">inviting_tb</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -258,6 +261,9 @@
             <property name="position">0</property>
           </packing>
         </child>
+        <style>
+          <class name="gray_back"/>
+        </style>
       </object>
       <packing>
         <property name="expand">False</property>
@@ -290,6 +296,9 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">ringing_tb</property>
             <property name="accepts_tab">False</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -334,6 +343,9 @@
             <property name="position">1</property>
           </packing>
         </child>
+        <style>
+          <class name="gray_back"/>
+        </style>
       </object>
       <packing>
         <property name="expand">False</property>
@@ -366,6 +378,9 @@
             <property name="cursor_visible">False</property>
             <property name="buffer">speaking_tb</property>
             <property name="accepts_tab">False</property>
+            <style>
+              <class name="gray_back"/>
+            </style>
           </object>
         </child>
       </object>
@@ -407,6 +422,9 @@
             <property name="position">0</property>
           </packing>
         </child>
+        <style>
+          <class name="gray_back"/>
+        </style>
       </object>
       <packing>
         <property name="expand">False</property>

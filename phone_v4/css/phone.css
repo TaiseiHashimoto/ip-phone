@@ -1,7 +1,3 @@
-textview {
-	font-size: 200%;
-}
-
 .gray_back, textview text {
   background-color: #fafafa;
 }
