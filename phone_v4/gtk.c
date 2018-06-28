@@ -123,12 +123,12 @@ void call(GtkWidget *widget, gpointer data) {
 
   create_connection(ip_addr, tcp_port);
 
-  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.main_page);
-  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
-
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Inviting\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.inviting_tb, cbuf, strlen(cbuf));
+
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.inviting_tb, NULL,
                         "font", "30", 
@@ -160,6 +160,9 @@ void ringing() {
   sprintf(cbuf, "Call from\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.ringing_tb, cbuf, strlen(cbuf));
 
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.main_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
+
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.ringing_tb, NULL,
                         "font", "30", 
                         "background", "#fafafa",
@@ -168,21 +171,18 @@ void ringing() {
   gtk_text_buffer_get_start_iter(GtkData.ringing_tb, &start);
   gtk_text_buffer_get_end_iter(GtkData.ringing_tb, &end);
   gtk_text_buffer_apply_tag (GtkData.ringing_tb, tag, &start, &end);
-
-  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.main_page);
-  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
 }
 
 G_MODULE_EXPORT
 void answer(GtkWidget *widget, gpointer data) {
   send_ok();
 
-  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
-  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
-
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
+
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
                         "font", "30", 
@@ -208,12 +208,12 @@ void declined() {
 }
 
 void speaking() {
-  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
-  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
-
   gchar cbuf[CHAR_BUF];
   sprintf(cbuf, "Talking with\n%s", InetData.ot_ip_addr);
   gtk_text_buffer_set_text(GtkData.speaking_tb, cbuf, strlen(cbuf));
+
+  gtk_container_remove(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
+  gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
                         "font", "30", 
