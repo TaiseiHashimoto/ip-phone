@@ -19,7 +19,7 @@
 #define BLOCK_LEN       30
 #define CONVERGE        10
 #define SIGNIFICANT     3
-#define MAX_VOLUME      2000   // バーに表示するボリュームの最大値
+#define MAX_VOLUME      12000   // バーに表示するボリュームの最大値
 
 #define IP_ADDR_LEN     20
 
