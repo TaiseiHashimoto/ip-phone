@@ -27,6 +27,8 @@
 #define INCOMING_BELL_FILE  "./sound/incoming.raw"
 #define OUTGOING_BELL_FILE  "./sound/outgoing.raw"
 
+#define GTK_FONT  "20"
+
 enum Status {
   NO_SESSION,     // セッションを開始していない
   NEGOTIATING,    // セッションの確立中
