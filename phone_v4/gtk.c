@@ -131,7 +131,7 @@ void call(GtkWidget *widget, gpointer data) {
   gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.inviting_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.inviting_tb, NULL,
-                        "font", "30", 
+                        "font", "25", 
                         "background", "#fafafa",
                         NULL);
   GtkTextIter start, end;
@@ -164,7 +164,7 @@ void ringing() {
   gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.ringing_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.ringing_tb, NULL,
-                        "font", "30", 
+                        "font", "25", 
                         "background", "#fafafa",
                         NULL);
   GtkTextIter start, end;
@@ -185,7 +185,7 @@ void answer(GtkWidget *widget, gpointer data) {
   gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
-                        "font", "30", 
+                        "font", "25", 
                         "background", "#fafafa",
                         NULL);
   GtkTextIter start, end;
@@ -216,7 +216,7 @@ void speaking() {
   gtk_container_add(GTK_CONTAINER(GtkData.window), GtkData.speaking_page);
 
   GtkTextTag *tag = gtk_text_buffer_create_tag (GtkData.speaking_tb, NULL,
-                        "font", "30", 
+                        "font", "25", 
                         "background", "#fafafa",
                         NULL);
   GtkTextIter start, end;
