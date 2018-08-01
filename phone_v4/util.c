@@ -73,17 +73,17 @@ int retrieve_address(char ***ip_addrs, int **tcp_ports) {
 
   fseek(fp, 0, SEEK_SET);
 
-  *ip_addrs = (char **) malloc(sizeof(char **) * count);
+  *ip_addrs = (char **) malloc(sizeof(char *) * count);
   for (int i = 0; i < count; i++) {
-    *ip_addrs[i] = (char *) malloc(sizeof(char *) * count);
+    (*ip_addrs)[i] = (char *) malloc(sizeof(char) * CHAR_BUF);
   }
-  *tcp_ports = (int *) malloc(sizeof(int *) * count);
+  *tcp_ports = (int *) malloc(sizeof(int) * count);
   int i = 0;
   while (fgets(cbuf, CHAR_BUF, fp) != NULL) {
     char *str;
     str = strtok(cbuf, " ");
-    strcpy(*ip_addrs[i], str);
-    *tcp_ports[i] = atoi(strtok(NULL, "\n"));
+    strcpy((*ip_addrs)[i], str);
+    (*tcp_ports)[i] = atoi(strtok(NULL, "\n"));
     i++;
   }
 
